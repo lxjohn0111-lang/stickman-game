@@ -356,7 +356,7 @@ export class Mission {
       if (g.enemies.combatNear(P.x, P.y, P.z, 24) || this.queue.length) continue;
       this.cpIndex = i;
       for (let k = 0; k <= i; k++) cps[k].armed = false;
-      this.checkpoint = this._snapshot({ x: c.x, y: c.y, z: c.z, yaw: c.yaw });
+      this.checkpoint = this._snapshot(c.at ? { x: c.at[0], y: c.at[1], z: c.at[2], yaw: c.at[3] ?? c.yaw } : { x: c.x, y: c.y, z: c.z, yaw: c.yaw });
       g.ui.checkpoint();
       g.audio.play('checkpoint', { gain: 0.7 });
       break;

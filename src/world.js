@@ -157,7 +157,7 @@ export class World {
     if (!found) return false;
     if (hit) {
       hit.t = best; hit.x = ox + dx * best; hit.y = oy + dy * best; hit.z = oz + dz * best;
-      hit.nx = nx; hit.ny = ny; hit.nz = nz; hit.col = bcol; hit.door = bdoor;
+      hit.nx = nx; hit.ny = ny; hit.nz = nz; hit.col = bcol; hit.door = bdoor; hit.tag = bcol ? bcol.tag : null;
     }
     return true;
   }

@@ -748,7 +748,7 @@ export class LevelKit {
   // Reinforcement entry point (behind a door, gate, stairway or far away).
   entry(id, x, y, z, yaw = 0, door = null) { this.data.entries.push({ id, x, y, z, yaw, door }); }
 
-  checkpoint(x, y, z, yaw, o = {}) { this.data.checkpoints.push({ x, y, z, yaw, r: o.r || 3.5, need: o.need ?? 0 }); }
+  checkpoint(x, y, z, yaw, o = {}) { this.data.checkpoints.push({ x, y, z, yaw, r: o.r || 3.5, need: o.need ?? 0, at: o.at || null }); }
 
   secret(x, y, z) { this.data.secrets.push({ x, y, z }); }
 
