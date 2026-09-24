@@ -66,10 +66,10 @@ function* build(K) {
 
   // ------------------------------------------------------------ furnaces (west)
   for (const z of [-12, -26]) {
-    K.cyl('furnace', -32, 3.5, z, 2.6, 3, 7, 12);
+    K.solidCyl('furnace', -32, 3.5, z, 2.6, 3, 7, 12, {}, 7, 'metal');
     K.box('ink', -29.4, 0.6, z - 1, -29.2, 2.4, z + 1, { col: false });
     K.box('furnace', -29.5, 0.8, z - 0.8, -29.3, 2.2, z + 0.8, { col: false });
-    K.collider(-35, 0, z - 3, -29, 7, z + 3);
+
     K.rod('pipe', V(-32, 7, z), V(-32, H, z), 0.5, 10);
   }
   K.box('machine', -31, 0, -40.8, -29.5, 1.4, -39.2);

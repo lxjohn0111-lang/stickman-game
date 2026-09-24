@@ -69,6 +69,6 @@ function packagePages() {
   const style = html.match(/<style>[\s\S]*?<\/style>/)[0];
   const body = html.match(/<body[^>]*>([\s\S]*)<\/body>/)[1];
   fs.mkdirSync(path.join(root, 'artifact'), { recursive: true });
-  fs.writeFileSync(path.join(root, 'artifact/index.html'), `${title}\n${style}\n<script>document.body.classList.add('style-classic');</script>${body}`);
+  fs.writeFileSync(path.join(root, 'artifact/index.html'), `${title}\n${style}\n<script>document.body.classList.add('style-neo');</script>${body}`);
   console.log('  onewayout.html + artifact/index.html written');
 }

@@ -3,7 +3,7 @@
 //  * left half: a floating joystick (analog walk; push to the rim to sprint);
 //  * right half: drag to look;
 //  * buttons: fire (hold; dragging on it also looks), aim and crouch
-//    (toggles), jump, reload, weapon swap and pause;
+//    (toggles), jump, reload, weapon swap, visual style and pause;
 //  * the interaction prompt under the crosshair becomes a button (F).
 // A light aim assist pulls the view toward the enemy nearest the crosshair
 // while the fire button is held. It can be switched off in the settings.
@@ -98,6 +98,7 @@ export class TouchControls {
         case 'reload': this._tap('KeyR'); break;
         case 'swap': this._tap('KeyQ'); break;
         case 'pause': this.game.pause(); break;
+        case 'style': { const g = this.game; g.setStyle(g.style === 'neo' ? 'classic' : 'neo'); g.ui.styleToast(g.style); break; }
         default: break;
       }
       this._syncToggles();

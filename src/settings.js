@@ -49,9 +49,10 @@ export function saveSettings() {
   write(KEY, JSON.stringify(settings));
 }
 
+// Neobrutalist is the default look; Classic only if the player chose it.
 export function loadStyle() {
   const s = read(STYLE_KEY);
-  return s === 'neo' ? 'neo' : 'classic';
+  return s === 'classic' ? 'classic' : 'neo';
 }
 
 export function saveStyle(style) {

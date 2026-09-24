@@ -80,6 +80,8 @@ function pushOut(base, amount) {
   base.onBeforeCompile = (sh) => {
     sh.vertexShader = sh.vertexShader.replace('#include <begin_vertex>', `vec3 transformed = vec3(position) + normal * ${amount.toFixed(3)};`);
   };
+  // one program per push distance (the function source alone is the same)
+  base.customProgramCacheKey = () => 'pushOut' + amount.toFixed(3);
   return base;
 }
 

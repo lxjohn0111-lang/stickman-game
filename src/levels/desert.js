@@ -36,18 +36,21 @@ function* build(K) {
     const f = rot ? [0, -1] : [-1, 0];
     K.box(role, x - hx, 0.6, z - hz, x + hx, 1.2, z + hz, { col: false });
     const cx = x + f[0] * 2.6, cz = z + f[1] * 2.6;
-    K.deco('car3', cx - (rot ? 1.2 : 0.9), 1.2, cz - (rot ? 0.9 : 1.2), cx + (rot ? 1.2 : 0.9), 2.7, cz + (rot ? 0.9 : 1.2));
+    K.box('car3', cx - (rot ? 1.2 : 0.9), 1.2, cz - (rot ? 0.9 : 1.2), cx + (rot ? 1.2 : 0.9), 2.7, cz + (rot ? 0.9 : 1.2), { surf: 'metal' });
     K.pane(cx + f[0] * 0.91 - (rot ? 1 : 0.01), 1.9, cz + f[1] * 0.91 - (rot ? 0.01 : 1), cx + f[0] * 0.91 + (rot ? 1 : 0.01), 2.5, cz + f[1] * 0.91 + (rot ? 0.01 : 1), { edges: false });
     const bx0 = x - hx + (rot ? 0 : 0), bz0 = z - hz;
     const bedA = rot ? [x - hx, z - hz + 2.2] : [x - hx + 2.2, z - hz];
-    K.deco(role, bedA[0], 1.2, bedA[1], x + hx, 2.2, rot ? z + hz : z - hz + 0.1);
-    K.deco(role, bedA[0], 1.2, rot ? bedA[1] : z + hz - 0.1, rot ? x - hx + 0.1 : x + hx, 2.2, z + hz);
+    K.box(role, bedA[0], 1.2, bedA[1], x + hx, 2.2, rot ? z + hz : z - hz + 0.1, { surf: 'metal' });
+    K.box(role, bedA[0], 1.2, rot ? bedA[1] : z + hz - 0.1, rot ? x - hx + 0.1 : x + hx, 2.2, z + hz, { surf: 'metal' });
     void bx0; void bz0;
     for (const a of [-2.4, 0.4, 2.4]) for (const s of [-1, 1]) {
       const wx = rot ? x + s * (Wd / 2) : x + a, wz = rot ? z + a : z + s * (Wd / 2);
       K.cyl('tire', wx, 0.5, wz, 0.5, 0.5, 0.35, 10, rot ? { rz: Math.PI / 2 } : { rx: Math.PI / 2 });
     }
-    K.collider(x - hx, 0, z - hz, x + hx, 2.7, z + hz, 7, null, 'metal');
+    // bodies can't get under or into it; bullets hit the chassis band, the
+    // cab and the bed walls (the boxes above), not the air over the bed
+    K.collider(x - hx, 0, z - hz, x + hx, 2.2, z + hz, 1, null, 'metal');
+    K.collider(x - hx, 0.6, z - hz, x + hx, 1.2, z + hz, 6, null, 'metal');
     K.mapRect(x - hx, z - hz, x + hx, z + hz, 'cover');
   };
   const transmitter = (id, x, z) => {

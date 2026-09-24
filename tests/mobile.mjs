@@ -2,7 +2,8 @@
 // coarse pointer). Checks touch detection and mobile defaults, that menus and
 // cards fit the small screen, the whole two-tap start, the joystick, look
 // drag, multi-touch, every button, the tappable interaction prompt, aim
-// assist, pause/resume, the portrait "turn your device" notice and a smaller
+// assist, pause/resume, menus, style and settings by tap in landscape and
+// portrait, the "turn your device" notice when resuming in portrait, a smaller
 // phone size. Screenshots go to test-output/mobile-*.png.
 import { launch, touchScreen, root, PHONE } from './harness.mjs';
 
@@ -22,6 +23,27 @@ let innerW = PHONE.width, innerH = PHONE.height;
 const det = await page.evaluate(() => ({ touch: document.body.classList.contains('touch'), active: WT.game.touch.active, fallback: WT.game.input.fallback, quality: WT.game.settings.quality, variant: WT.t('tip.reload') }));
 check('touch screen detected, no pointer lock, Low quality by default', det.touch && det.active && det.fallback && det.quality === 'low', det);
 check('touch wording in hints', det.variant.startsWith('Tap'), det.variant);
+check('Neobrutalist is the default style', (await page.evaluate(() => WT.game.style)) === 'neo', '');
+
+// ---- real taps in the menus: visual style and settings (landscape)
+const tapSec = (sec) => page.tap(`#menu nav.menu-nav button[data-sec=${sec}]`);
+await tapSec('style');
+await page.waitForTimeout(200);
+await page.tap('#menu-panel .style-card:nth-child(1)');
+await page.waitForTimeout(150);
+const st1 = await page.evaluate(() => WT.game.style);
+await page.tap('#menu-panel .style-card:nth-child(2)');
+await page.waitForTimeout(150);
+const st2 = await page.evaluate(() => WT.game.style);
+check('tapping the style cards switches style (landscape)', st1 === 'classic' && st2 === 'neo', { st1, st2 });
+await tapSec('settings');
+await page.waitForTimeout(200);
+await page.tap('#menu-panel .settings .seg button:has-text("Medium")');
+await page.waitForTimeout(150);
+const q1 = await page.evaluate(() => WT.game.settings.quality);
+await page.tap('#menu-panel .settings .seg button:has-text("Low")');
+await page.waitForTimeout(150);
+check('tapping settings changes them (landscape)', q1 === 'medium' && (await page.evaluate(() => WT.game.settings.quality)) === 'low', { q1 });
 
 // ---- menus fit the phone screen, in both styles
 for (const style of ['classic', 'neo']) {
@@ -151,6 +173,13 @@ await tapBtn('swap');
 await step(40);
 const sl1 = await page.evaluate(() => WT.game.player.active);
 check('swap button switches weapon', sl0 !== sl1, { sl0, sl1 });
+const sty0 = await page.evaluate(() => WT.game.style);
+await tapBtn('style');
+await step(2);
+const sty1 = await page.evaluate(() => WT.game.style);
+await tapBtn('style');
+await step(2);
+check('style button switches the look mid-game', sty0 !== sty1 && (await page.evaluate(() => WT.game.style)) === sty0, { sty0, sty1 });
 
 // ---- the interaction prompt is a button: open a door with it
 const door = await page.evaluate(() => {
@@ -251,7 +280,7 @@ await shot('results');
 const rc = await fits('#results .card');
 check('results card fits', rc.ok, rc.rs);
 
-// ---- portrait: the "turn your device" notice, and play pauses
+// ---- portrait: play pauses, the pause menu works; resuming waits for landscape
 await page.tap('#res-btns button:nth-child(2)');
 await page.waitForFunction(() => WT.game.state === 'ready', null, { timeout: 300000 });
 await page.tap('#lc-start');
@@ -260,12 +289,29 @@ await page.setViewportSize({ width: 390, height: 844 });
 innerW = 390; innerH = 844;
 await page.waitForTimeout(400);
 const por = await page.evaluate(() => ({ rotate: getComputedStyle(document.getElementById('rotate')).display, state: WT.game.state }));
+await shot('portrait-pause');
+check('turning to portrait pauses; the pause menu stays usable', por.rotate === 'none' && por.state === 'paused', por);
+await page.tap('#pause nav button[data-sec=style]');
+await page.waitForTimeout(200);
+await page.tap('#pause-panel .style-card:nth-child(1)');
+await page.waitForTimeout(150);
+const pst = await page.evaluate(() => WT.game.style);
+await page.tap('#pause nav button[data-sec=settings]');
+await page.waitForTimeout(200);
+await page.tap('#pause-panel .settings .seg button:has-text("Medium")');
+await page.waitForTimeout(150);
+const pq = await page.evaluate(() => WT.game.settings.quality);
+check('portrait pause menu: style and settings by tap', pst === 'classic' && pq === 'medium', { pst, pq });
+await page.tap('#pause nav button[data-go=resume]');
+await page.waitForTimeout(200);
+const wait = await page.evaluate(() => ({ rotate: getComputedStyle(document.getElementById('rotate')).display, state: WT.game.state }));
 await shot('portrait');
-check('portrait shows "turn your device" and pauses', por.rotate === 'flex' && por.state === 'paused', por);
+check('Resume in portrait asks to turn the device', wait.rotate === 'flex' && wait.state === 'lockwait', wait);
 await page.setViewportSize({ width: 740, height: 360 });
 innerW = 740; innerH = 360;
 await page.waitForTimeout(400);
-await page.tap('#pause nav button[data-go=resume]');
+check('turning back to landscape carries on', (await page.evaluate(() => WT.game.state)) === 'playing', '');
+await page.evaluate(() => { WT.game.setStyle('neo', false); WT.game.settings.quality = 'low'; WT.game.applySettings(false); });
 await step(3);
 await shot('small-phone-hud');
 const sm = await fits('#touch .tbtn, #status, #objective, #scorebox');
@@ -275,6 +321,24 @@ await page.waitForTimeout(300);
 await shot('small-phone-menu');
 const smm = await fits('#menu .menu-left, #menu-panel');
 check('small phone: menu fits', smm.ok, smm.rs);
+// main menu in portrait: no rotate card, style and settings by tap
+await page.setViewportSize({ width: 390, height: 844 });
+innerW = 390; innerH = 844;
+await page.waitForTimeout(400);
+const pm2 = await page.evaluate(() => getComputedStyle(document.getElementById('rotate')).display);
+await tapSec('style');
+await page.waitForTimeout(200);
+await page.tap('#menu-panel .style-card:nth-child(1)');
+await page.waitForTimeout(150);
+const mst = await page.evaluate(() => WT.game.style);
+await tapSec('settings');
+await page.waitForTimeout(200);
+await shot('portrait-menu-settings');
+await page.tap('#menu-panel .settings .seg button:has-text("High")');
+await page.waitForTimeout(150);
+const mq = await page.evaluate(() => WT.game.settings.quality);
+const wide = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1 && [...document.querySelectorAll('#menu nav button')].every((b) => b.getBoundingClientRect().right <= window.innerWidth + 1));
+check('portrait main menu: usable, style and settings by tap, nothing off-screen sideways', pm2 === 'none' && mst === 'classic' && mq === 'high' && wide, { pm2, mst, mq, wide });
 
 const errs = logs.filter((l) => l.startsWith('pageerror'));
 check('no page errors', errs.length === 0, errs.slice(0, 3));

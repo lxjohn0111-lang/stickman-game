@@ -182,7 +182,8 @@ function* build(K) {
   function vent(x, z) {
     b.cyl('steel', x, RY + 0.3, z, 0.18, 0.2, 0.6, 8);
     b.cyl('steel', x, RY + 0.7, z, 0.02, 0.34, 0.22, 8);
-    b.collider(x - 0.25, RY, z - 0.25, x + 0.25, RY + 0.8, z + 0.25);
+    K.hullCyl(x, RY + 0.3, z, 0.18, 0.2, 0.6, 8);
+    K.hullCyl(x, RY + 0.7, z, 0.02, 0.34, 0.22, 8);
   }
   vent(-12, 9); vent(-19, 10.5); vent(-26, 2.6); vent(-31.5, 15.5); vent(-3.5, 2.4); vent(-11.5, 16.2);
   // pipe vents
@@ -319,7 +320,7 @@ function* build(K) {
   map.rects.push({ x0: -11.9, z0: 1.0, x1: -11.45, z1: 3.6, k: 'prop' });
   // bins
   b.cyl('steel', -10.8, 0.4, 7.2, 0.28, 0.24, 0.8, 10);
-  b.collider(-11.1, 0, 6.9, -10.5, 0.8, 7.5);
+  K.hullCyl(-10.8, 0.4, 7.2, 0.28, 0.24, 0.8, 10);
   b.box('lamp', -7.5, CEIL - 0.04, 3.5, 1.2, 0.06, 0.3, { col: false });
   b.box('lamp', -7.5, CEIL - 0.04, 8.5, 1.2, 0.06, 0.3, { col: false });
   addDoor({ hx: -12.0, hz: 9.24, angle: Math.PI / 2, w: 0.92, name: 'Canteen door' });
@@ -375,7 +376,7 @@ function* build(K) {
   // bins, clock, lamps
   for (const [x, z] of [[-31.6, 1.2], [-16.2, 1.2]]) {
     b.cyl('steel', x, 0.42, z, 0.27, 0.23, 0.84, 10);
-    b.collider(x - 0.28, 0, z - 0.28, x + 0.28, 0.84, z + 0.28);
+    K.hullCyl(x, 0.42, z, 0.27, 0.23, 0.84, 10);
   }
   b.cyl('frame', -23, 3.3, BZ1 - EXT - 0.03, 0.3, 0.3, 0.05, 16, { rx: Math.PI / 2 });
   b.line(-23, 3.3, BZ1 - EXT - 0.06, -23, 3.5, BZ1 - EXT - 0.06);
@@ -457,10 +458,9 @@ function* build(K) {
     b.boxMM('barracks', x0, 0, z0, x1, 3.0, z1);
     const w = x1 - x0 + 0.8, L = z1 - z0 + 0.8, H = 1.8;
     // triangular prism: CylinderGeometry with 3 sides, laid along Z
-    b.cyl('barracksRoof', (x0 + x1) / 2, 3.0 + H / 3, (z0 + z1) / 2, 1, 1, L, 3, {
-      rx: -Math.PI / 2, sx: w / 2 / 0.866, sz: H / 1.5,
-    });
-    b.collider(x0 - 0.4, 3.0, z0 - 0.4, x1 + 0.4, 3.0 + H * 0.6, z1 + 0.4);
+    const roofRot = { rx: -Math.PI / 2, sx: w / 2 / 0.866, sz: H / 1.5 };
+    b.cyl('barracksRoof', (x0 + x1) / 2, 3.0 + H / 3, (z0 + z1) / 2, 1, 1, L, 3, roofRot);
+    K.hullCyl((x0 + x1) / 2, 3.0 + H / 3, (z0 + z1) / 2, 1, 1, L, 3, roofRot);
     const fx = doorSide > 0 ? x1 + 0.002 : x0 - 0.002;
     const s = doorSide;
     const zc = (z0 + z1) / 2;
@@ -491,7 +491,7 @@ function* build(K) {
     b.cyl('pine', x, 2.1 * s, z, 0, 1.65 * s, 2.3 * s, 7);
     b.cyl('pine', x, 3.35 * s, z, 0, 1.25 * s, 2.0 * s, 7, { ry: 0.4 });
     b.cyl('pine', x, 4.5 * s, z, 0, 0.85 * s, 1.7 * s, 7, { ry: 0.8 });
-    b.collider(x - 0.22 * s, 0, z - 0.22 * s, x + 0.22 * s, 3 * s, z + 0.22 * s);
+    K.hullCyl(x, 1.5 * s, z, 0.15 * s, 0.17 * s, 3 * s, 7);
     map.circles.push({ x, z, r: 1.4 * s, k: 'tree' });
   }
   const trees = [
@@ -510,7 +510,7 @@ function* build(K) {
     b.box('steel', x + 0.45, 5.9, z, 0.9, 0.07, 0.07, { col: false });
     b.box('lamp', x + 0.85, 5.8, z, 0.45, 0.14, 0.26, { col: false });
     b.box('ink', x + 0.85, 5.72, z, 0.36, 0.02, 0.18, { col: false });
-    b.collider(x - 0.14, 0, z - 0.14, x + 0.14, 6, z + 0.14);
+    K.hullCyl(x, 3.0, z, 0.06, 0.09, 6.0, 6, {}, 7, 'metal');
     lampTops.push(V(x, 5.95, z));
     map.circles.push({ x, z, r: 0.3, k: 'lamp' });
   }
@@ -553,7 +553,10 @@ function* build(K) {
     b.rod('steel', legAt(i, 0.25), legAt(i, legTop), 0.17, 8);
     const p = legAt(i, 0.25);
     b.box('concrete', p.x, 0.45, p.z, 0.6, 0.4, 0.6);
-    b.collider(p.x - 0.35, 0, p.z - 0.35, p.x + 0.35, 3.0, p.z + 0.35);
+    b.collider(p.x - 0.3, 0, p.z - 0.3, p.x + 0.3, 0.65, p.z + 0.3);
+    // bullets: the whole leaning leg; bodies: its footing and lower part
+    K.hullRod(legAt(i, 0.25), legAt(i, legTop), 0.17, 8, 6, 'metal');
+    K.hullRod(legAt(i, 0.25), legAt(i, 2.2), 0.17, 8, 1, 'metal');
   }
   const levels = [0.25, 3.7, 7.1, legTop];
   for (let l = 1; l < levels.length; l++) {
@@ -575,6 +578,8 @@ function* build(K) {
   }
   b.cyl('tank', WX, legTop + 2.0, WZ, 3.4, 3.4, 3.9, 12);
   b.cyl('tank', WX, legTop + 4.75, WZ, 0.2, 3.6, 1.6, 12);
+  K.hullCyl(WX, legTop + 2.0, WZ, 3.4, 3.4, 3.9, 12);
+  K.hullCyl(WX, legTop + 4.75, WZ, 0.2, 3.6, 1.6, 12);
   b.cyl('steel', WX, legTop + 5.7, WZ, 0.06, 0.06, 0.5, 6);
   for (const y of [legTop + 0.9, legTop + 2.9]) {
     for (let i = 0; i < 12; i++) {
@@ -668,7 +673,7 @@ function* build(K) {
   for (const [x, z] of [[-33.2, -21], [-33.2, -21.7], [-32.5, -21.35], [-33.1, -57], [-32.4, -57.4], [3.2, -16], [3.2, -16.7]]) {
     b.cyl('steel', x, 0.45, z, 0.3, 0.3, 0.9, 10);
     b.line(x - 0.3, 0.3, z, x + 0.3, 0.3, z);
-    b.collider(x - 0.3, 0, z - 0.3, x + 0.3, 0.9, z + 0.3);
+    K.hullCyl(x, 0.45, z, 0.3, 0.3, 0.9, 10, {}, 7, 'metal');
   }
 
   // grass tufts: sparse ink strokes that give the white ground depth

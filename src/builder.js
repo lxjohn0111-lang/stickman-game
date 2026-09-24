@@ -116,6 +116,12 @@ export class PartBuilder {
   box(role, x, y, z, sx, sy, sz, o = {}) {
     makeMatrix(x, y, z, o.rx || 0, o.ry || 0, o.rz || 0, sx, sy, sz, _m);
     this.add(role, geoCache.box(), _m, o.edges !== false);
+    // static level boxes are kept for the coplanar-face pass (see
+    // resolveCoplanar); rotated ones are left alone
+    if (this.aabbs && !o.rx && !o.ry && !o.rz) {
+      const list = this.parts[role];
+      this.aabbs.push({ role, g: list[list.length - 1], b: [x - sx / 2, y - sy / 2, z - sz / 2, x + sx / 2, y + sy / 2, z + sz / 2] });
+    }
     return _m;
   }
 
@@ -184,6 +190,7 @@ export class StaticBuilder extends PartBuilder {
     super();
     this.world = world;
     this.fenceEdges = [];
+    this.aabbs = [];
   }
 
   // Axis-aligned box from min/max corners; adds a collider unless col === false.
@@ -216,4 +223,88 @@ export class StaticBuilder extends PartBuilder {
     this.fenceEdges = [];
     return out;
   }
+}
+
+// Z-fighting fix. Faces of two differently coloured boxes that lie in the
+// same plane (or within a few centimetres, for floors seen from afar) and
+// overlap would flicker. Before merging, each such pair is separated by
+// nudging the smaller face a few millimetres (colliders are not touched):
+//  * tops, exactly coplanar: a tall box (a wall under a floor or a sill)
+//    drops 4 mm under the other; a thin one (a floor, rug, path, sill)
+//    rises 3 cm above it;
+//  * tops closer than 3 cm (floor overlays over the ground, decks over
+//    hulls): the upper one rises until they are 3 cm apart;
+//  * sides, coplanar: a thin piece (glass, frame, stripe, sign) moves 6 mm
+//    out in front; a thick one moves 4 mm back behind the other.
+// Bottom faces are never seen and are ignored.
+export function resolveCoplanar(boxes) {
+  const TOP_GAP = 0.03, EXACT = 0.002, SIDE = 0.005;
+  for (const bx of boxes) bx.n = bx.b.slice(); // working bounds
+  // a few rounds: lifting one overlay can bring it close to the next one
+  for (let round = 0; round < 4; round++) {
+    const faces = [];
+    for (const bx of boxes) {
+      const [x0, y0, z0, x1, y1, z1] = bx.n;
+      const lo = [x0, y0, z0], hi = [x1, y1, z1];
+      for (let a = 0; a < 3; a++) {
+        const u = (a + 1) % 3, v = (a + 2) % 3;
+        for (const s of a === 1 ? [1] : [-1, 1]) faces.push({ bx, a, s, p: s > 0 ? hi[a] : lo[a], u0: lo[u], u1: hi[u], v0: lo[v], v1: hi[v], area: (hi[u] - lo[u]) * (hi[v] - lo[v]) });
+      }
+    }
+    const groups = new Map();
+    for (const f of faces) { const k = f.a * 2 + (f.s > 0 ? 1 : 0); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(f); }
+    let changed = 0;
+    const set = (bx, i, v) => { if (Math.abs(bx.n[i] - v) > 1e-6) { bx.n[i] = v; changed++; } };
+    for (const list of groups.values()) {
+      list.sort((A, B) => A.p - B.p);
+      const top = list[0].a === 1;
+      const win = top ? TOP_GAP - 1e-4 : SIDE;
+      for (let i = 0; i < list.length; i++) {
+        for (let j = i + 1; j < list.length && list[j].p - list[i].p < win; j++) {
+          const A = list[i], B = list[j];
+          if (A.bx === B.bx || A.bx.role === B.bx.role) continue;
+          if (Math.min(A.u1, B.u1) - Math.max(A.u0, B.u0) <= 0.01 || Math.min(A.v1, B.v1) - Math.max(A.v0, B.v0) <= 0.01) continue;
+          const gap = B.p - A.p;
+          if (top) {
+            if (gap < EXACT) {
+              const S = A.area <= B.area ? A : B, L = S === A ? B : A;
+              const h = S.bx.b[4] - S.bx.b[1];
+              // tall: tuck it under (4 mm is enough, it is covered); thin: lift it clear
+              if (h > 0.35) { if (S.bx.n[4] > L.p - 0.004) set(S.bx, 4, L.p - 0.004); } else set(S.bx, 4, L.p + TOP_GAP);
+            } else if (B.bx.b[4] - B.bx.b[1] > 0.35 && gap <= 0.004 + 1e-6) {
+              // a tucked-under tall top: leave it
+            } else {
+              set(B.bx, 4, A.p + TOP_GAP);
+            }
+          } else {
+            const S = A.area <= B.area ? A : B, L = S === A ? B : A;
+            const k = S.s > 0 ? S.a + 3 : S.a;
+            const thick = S.bx.b[S.a + 3] - S.bx.b[S.a];
+            const want = L.p + S.s * (thick < 0.12 ? 0.006 : -0.004);
+            if (Math.abs(S.bx.n[k] - want) > 1e-6 && Math.abs(S.bx.n[k] - L.p) < SIDE) set(S.bx, k, want);
+          }
+        }
+      }
+    }
+    if (!changed) break;
+  }
+  // rewrite the vertices of every box whose bounds changed
+  let moved = 0;
+  for (const bx of boxes) {
+    const o = bx.b, n = bx.n;
+    if (o.every((v, i) => v === n[i])) continue;
+    if (n[3] <= n[0] || n[4] <= n[1] || n[5] <= n[2]) continue; // never invert a box
+    moved++;
+    const pos = bx.g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      for (let a = 0; a < 3; a++) {
+        const v = pos.getComponent(i, a);
+        const t = (v - o[a]) / (o[a + 3] - o[a] || 1);
+        pos.setComponent(i, a, n[a] + t * (n[a + 3] - n[a]));
+      }
+    }
+    pos.needsUpdate = true;
+    bx.b = n;
+  }
+  return moved;
 }

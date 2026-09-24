@@ -8,10 +8,43 @@
 //  * a staged finalize() that merges geometry and links the nav graph over
 //    several frames so loading never blocks for long.
 import * as THREE from 'three';
-import { StaticBuilder, PartBuilder, geoCache } from './builder.js';
+import { StaticBuilder, PartBuilder, geoCache, makeMatrix, resolveCoplanar } from './builder.js';
 import { Door } from './doors.js';
 import { NavGraph } from './nav.js';
 import { World, MOVE, BULLET, SIGHT, SOLID, GLASS } from './world.js';
+
+// Exact convex hull of THREE.CylinderGeometry(rt, rb, h, seg) under matrix m:
+// its vertices and outward face planes [nx, ny, nz, d] (inside: n.p <= d).
+export function cylHull(rt, rb, h, seg, m) {
+  const ring = (r, y) => {
+    if (r < 1e-6) return [new THREE.Vector3(0, y, 0).applyMatrix4(m)];
+    const out = [];
+    for (let i = 0; i < seg; i++) { const a = (i / seg) * Math.PI * 2; out.push(new THREE.Vector3(r * Math.sin(a), y, r * Math.cos(a)).applyMatrix4(m)); }
+    return out;
+  };
+  const top = ring(rt, h / 2), bot = ring(rb, -h / 2);
+  const pts = [...top, ...bot];
+  const c = new THREE.Vector3();
+  for (const p of pts) c.add(p);
+  c.divideScalar(pts.length);
+  const planes = [];
+  const plane = (a, b, d) => {
+    const n = new THREE.Vector3().subVectors(b, a).cross(new THREE.Vector3().subVectors(d, a));
+    if (n.lengthSq() < 1e-12) return;
+    n.normalize();
+    if (n.dot(new THREE.Vector3().subVectors(c, a)) > 0) n.negate();
+    planes.push([n.x, n.y, n.z, n.dot(a)]);
+  };
+  const T = (i) => top[i % top.length], B = (i) => bot[i % bot.length];
+  for (let i = 0; i < seg; i++) {
+    if (top.length === 1) plane(B(i), B(i + 1), T(0));
+    else if (bot.length === 1) plane(T(i), T(i + 1), B(0));
+    else plane(B(i), B(i + 1), T(i + 1).distanceToSquared(B(i + 1)) > 1e-10 ? T(i + 1) : T(i));
+  }
+  if (top.length > 2) plane(top[0], top[1], top[2]);
+  if (bot.length > 2) plane(bot[0], bot[1], bot[2]);
+  return { points: pts.map((p) => [p.x, p.y, p.z]), planes };
+}
 
 export function rng(seed) {
   let s = seed >>> 0;
@@ -72,6 +105,28 @@ export class LevelKit {
   detail(ax, ay, az, bx, by, bz) { this.b.fenceLine(ax, ay, az, bx, by, bz); }
   collider(x0, y0, z0, x1, y1, z1, flags = SOLID, tag = null, surf = null) { return this.b.collider(x0, y0, z0, x1, y1, z1, flags, tag, surf); }
   cyl(role, x, y, z, rt, rb, h, seg, o = {}) { this.b.cyl(role, x, y, z, rt, rb, h, seg, o); }
+  // A cylinder / frustum / cone (any rotation or scale) that also collides
+  // exactly: bullets and sight stop on its faces, bodies on its footprint.
+  solidCyl(role, x, y, z, rt, rb, h, seg, o = {}, flags = SOLID, surf = null, tag = null) {
+    const m = this.b.cyl(role, x, y, z, rt, rb, h, seg, o).clone();
+    const hl = cylHull(rt, rb, h, seg, m);
+    return this.world.addHull(hl.points, hl.planes, flags, tag, surf);
+  }
+  // Exact collider for a rod between two points (THREE.Vector3).
+  hullRod(a, b, r, seg = 8, flags = SOLID, surf = null) {
+    const dir = new THREE.Vector3().subVectors(b, a);
+    const len = dir.length();
+    const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.divideScalar(len));
+    const m = new THREE.Matrix4().compose(new THREE.Vector3().addVectors(a, b).multiplyScalar(0.5), q, new THREE.Vector3(1, 1, 1));
+    const hl = cylHull(r, r, len, seg, m);
+    return this.world.addHull(hl.points, hl.planes, flags, null, surf);
+  }
+  // Collision only, for the same shapes (e.g. a simpler proxy of a prop).
+  hullCyl(x, y, z, rt, rb, h, seg, o = {}, flags = SOLID, surf = null, tag = null) {
+    const m = makeMatrix(x, y, z, o.rx || 0, o.ry || 0, o.rz || 0, o.sx || 1, o.sy || 1, o.sz || 1);
+    const hl = cylHull(rt, rb, h, seg, m);
+    return this.world.addHull(hl.points, hl.planes, flags, tag, surf);
+  }
   rod(role, a, b, r, seg = 6, o = {}) { this.b.rod(role, a, b, r, seg, o); }
   mapRect(x0, z0, x1, z1, k) { this.map.rects.push({ x0: Math.min(x0, x1), z0: Math.min(z0, z1), x1: Math.max(x0, x1), z1: Math.max(z0, z1), k }); }
   mapCircle(x, z, r, k) { this.map.circles.push({ x, z, r, k }); }
@@ -301,7 +356,9 @@ export class LevelKit {
       const top = y0 + H * ((i + 1) / steps);
       const p0x = x + dx * a0 + ax * (-w / 2), p0z = z + dz * a0 + az * (-w / 2);
       const p1x = x + dx * a1 + ax * (w / 2), p1z = z + dz * a1 + az * (w / 2);
-      this.collider(Math.min(p0x, p1x), y0 - 0.2, Math.min(p0z, p1z), Math.max(p0x, p1x), top, Math.max(p0z, p1z), SOLID, null, role === 'asphalt' ? 'ground' : 'indoor');
+      // thin steps under the slab: the space below the ramp stays open
+      const bot = Math.max(y0 - 0.2, top - H / steps - th / Math.cos(slope));
+      this.collider(Math.min(p0x, p1x), bot, Math.min(p0z, p1z), Math.max(p0x, p1x), top, Math.max(p0z, p1z), SOLID, null, role === 'asphalt' ? 'ground' : 'indoor');
     }
     if (rails) {
       for (const s of rails === 'both' ? [-1, 1] : rails === 'left' ? [-1] : [1]) {
@@ -505,16 +562,16 @@ export class LevelKit {
     this.cyl('pine', x, y + 2.1 * s, z, 0, 1.65 * s, 2.3 * s, 7);
     this.cyl('pine', x, y + 3.35 * s, z, 0, 1.25 * s, 2.0 * s, 7, { ry: 0.4 });
     this.cyl('pine', x, y + 4.5 * s, z, 0, 0.85 * s, 1.7 * s, 7, { ry: 0.8 });
-    this.collider(x - 0.22 * s, y, z - 0.22 * s, x + 0.22 * s, y + 3 * s, z + 0.22 * s);
+    // the trunk line up into the foliage
+    this.hullCyl(x, y + 1.5 * s, z, 0.15 * s, 0.17 * s, 3 * s, 7);
     this.mapCircle(x, z, 1.4 * s, 'tree');
   }
 
   lampPost(x, z, { h = 6, arm = 1, y = 0 } = {}) {
-    this.cyl('steel', x, y + h / 2, z, 0.06, 0.09, h, 6);
+    this.solidCyl('steel', x, y + h / 2, z, 0.06, 0.09, h, 6, {}, SOLID, 'metal');
     this.boxC('steel', x + 0.45 * arm, y + h - 0.1, z, 0.9, 0.07, 0.07, { col: false });
     this.boxC('lamp', x + 0.85 * arm, y + h - 0.2, z, 0.45, 0.14, 0.26, { col: false });
     this.boxC('ink', x + 0.85 * arm, y + h - 0.28, z, 0.36, 0.02, 0.18, { col: false });
-    this.collider(x - 0.14, y, z - 0.14, x + 0.14, y + h, z + 0.14);
     this.data.lamps.push({ x: x + 0.85 * arm, y: y + h - 0.3, z });
     this.mapCircle(x, z, 0.3, 'lamp');
     return V(x, y + h - 0.05, z);
@@ -558,14 +615,17 @@ export class LevelKit {
     this.deco('barrier', x - tx, y + 0.32, z - tz, x + tx, y + 0.9, z + tz);
     this.b.boxMM('stripe', x - (along === 'x' ? hx * 0.6 : tx + 0.002), y + 0.55, z - (along === 'x' ? tz + 0.002 : hz * 0.6),
       x + (along === 'x' ? hx * 0.6 : tx + 0.002), y + 0.7, z + (along === 'x' ? tz + 0.002 : hz * 0.6), { col: false, edges: false });
-    this.collider(x - hx, y, z - hz, x + hx, y + 0.9, z + hz, SOLID, null, 'indoor');
+    // bodies: the whole barrier; bullets and sight: its stepped profile
+    this.collider(x - hx, y, z - hz, x + hx, y + 0.9, z + hz, MOVE, null, 'indoor');
+    this.collider(x - hx, y, z - hz, x + hx, y + 0.32, z + hz, BULLET | SIGHT, null, 'indoor');
+    this.collider(x - tx, y + 0.32, z - tz, x + tx, y + 0.9, z + tz, BULLET | SIGHT, null, 'indoor');
     this.mapRect(x - hx, z - hz, x + hx, z + hz, 'cover');
   }
 
   drum(x, z, y = 0, role = 'steel') {
-    this.cyl(role, x, y + 0.45, z, 0.3, 0.3, 0.9, 10);
+    this.solidCyl(role, x, y + 0.45, z, 0.3, 0.3, 0.9, 10, {}, SOLID, 'metal');
     this.line(x - 0.3, y + 0.3, z, x + 0.3, y + 0.3, z);
-    this.collider(x - 0.3, y, z - 0.3, x + 0.3, y + 0.9, z + 0.3, SOLID, null, 'metal');
+
   }
 
   // Sandbag wall: stacked courses with offset joints.
@@ -588,17 +648,16 @@ export class LevelKit {
   rock(x, z, r, h, seed = 1, y = 0) {
     const R = rng(seed);
     const seg = 5 + Math.floor(R() * 3);
-    this.cyl('rock', x, y + h / 2, z, r * (0.45 + R() * 0.2), r, h, seg, { ry: R() * 3 });
-    if (R() > 0.3) this.cyl('rock', x + r * 0.35, y + h * 0.3, z - r * 0.2, r * 0.3, r * 0.55, h * 0.6, 5, { ry: R() * 3 });
-    this.collider(x - r * 0.8, y, z - r * 0.8, x + r * 0.8, y + h, z + r * 0.8, SOLID, null, 'ground');
+    // collides exactly: bullets on the sloped faces, bodies on the footprint
+    this.solidCyl('rock', x, y + h / 2, z, r * (0.45 + R() * 0.2), r, h, seg, { ry: R() * 3 }, SOLID, 'ground');
+    if (R() > 0.3) this.solidCyl('rock', x + r * 0.35, y + h * 0.3, z - r * 0.2, r * 0.3, r * 0.55, h * 0.6, 5, { ry: R() * 3 }, SOLID, 'ground');
     this.mapCircle(x, z, r, 'rock');
   }
 
   // Ridge tent: triangular prism on four short walls.
   tent(x, z, w, l, h, rot = 0, role = 'tent') {
-    this.cyl(role, x, h / 3, z, 1, 1, l, 3, { rx: -Math.PI / 2, ry: rot ? Math.PI / 2 : 0, sx: w / 2 / 0.866, sz: h / 1.5 });
+    this.solidCyl(role, x, h / 3, z, 1, 1, l, 3, { rx: -Math.PI / 2, ry: rot ? Math.PI / 2 : 0, sx: w / 2 / 0.866, sz: h / 1.5 }, SOLID, 'ground');
     const x0 = x - (rot ? l : w) / 2, x1 = x + (rot ? l : w) / 2, z0 = z - (rot ? w : l) / 2, z1 = z + (rot ? w : l) / 2;
-    this.collider(x0 + 0.2, 0, z0 + 0.2, x1 - 0.2, h * 0.75, z1 - 0.2, SOLID, null, 'ground');
     this.mapRect(x0, z0, x1, z1, 'block');
   }
 
@@ -617,7 +676,10 @@ export class LevelKit {
         this.cyl('tire', wx, 0.33, wz, 0.33, 0.33, 0.22, 10, rot ? { rz: Math.PI / 2 } : { rx: Math.PI / 2 });
       }
     }
-    this.collider(x - hx, 0, z - hz, x + hx, 1.45, z + hz, SOLID, null, 'metal');
+    // bodies: the whole car; bullets and sight: the body and the cabin
+    this.collider(x - hx, 0, z - hz, x + hx, 1.45, z + hz, MOVE, null, 'metal');
+    this.collider(x - hx, 0.3, z - hz, x + hx, 0.95, z + hz, BULLET | SIGHT, null, 'metal');
+    this.collider(x + cx - chx, 0.95, z + cz - chz, x + cx + chx, 1.45, z + cz + chz, BULLET | SIGHT, null, 'metal');
     this.mapRect(x - hx, z - hz, x + hx, z + hz, 'cover');
   }
 
@@ -659,7 +721,7 @@ export class LevelKit {
   // Conveyor belt from (x0,z0) to (x1,z1), top at y, moving along dir.
   conveyor({ x0, z0, x1, z1, y = 0.9, dir = 'e', speed = 1.6 }) {
     const [dx, dz] = DIRS[dir];
-    this.box('machine', x0, 0, z0, x1, y - 0.06, z1, { col: false });
+    this.box('machine', x0, 0, z0, x1, y - 0.01, z1, { col: false });
     const col = this.collider(x0, 0, z0, x1, y, z1, SOLID, 'belt', 'metal');
     col.conv = { vx: dx * speed, vz: dz * speed, on: true };
     // rollers at both ends
@@ -820,6 +882,12 @@ export class LevelKit {
   *finalize() {
     const mats = this.materials;
     const named = {};
+    // separate coplanar faces of different materials (z-fighting)
+    const aabbs = Object.values(this.builders).flatMap((b) => b.aabbs || []);
+    resolveCoplanar(aabbs);
+    if (globalThis.__boxLog && !this.preview) globalThis.__lastAabbs = aabbs.map((x) => [x.role, ...x.b]);
+    for (const x of aabbs) x.g = null;
+    yield 0.03;
     for (const [name, b] of Object.entries(this.builders)) {
       const grp = name === 'main' ? this.group : new THREE.Group();
       if (name !== 'main') { grp.name = name; this.group.add(grp); }

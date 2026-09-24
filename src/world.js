@@ -1,6 +1,11 @@
 // Collision world: axis-aligned boxes in a uniform XZ grid, plus swinging
 // doors (oriented boxes) and an infinite ground plane at y = 0.
 //
+// Non-box shapes (cylinders, rocks, tents, pitched roofs) are convex hulls:
+// rays (bullets, sight) test the exact hull planes, and bodies collide with
+// the hull's footprint, a convex polygon in XZ, over its height. Their AABB
+// is only used to find them in the grid.
+//
 // Character movement follows three rules that avoid classic FPS bugs:
 //  * step-ups (stairs, kerbs) only happen while grounded, so a jump can't
 //    mantle the 1.05 m parapet;
@@ -40,12 +45,75 @@ export class World {
     this._ax = -1;
   }
 
-  add(x0, y0, z0, x1, y1, z1, f = SOLID, tag = null, surf = null) {
-    const c = { x0, y0, z0, x1, y1, z1, f, tag, surf, conv: null, s: 0, i: this.cols.length };
+  add(x0, y0, z0, x1, y1, z1, f = SOLID, tag = null, surf = null, hull = null) {
+    const c = { x0, y0, z0, x1, y1, z1, f, tag, surf, conv: null, s: 0, i: this.cols.length, hull };
     this.cols.push(c);
     const r = this._range(x0, z0, x1, z1);
     for (let j = r[2]; j <= r[3]; j++) for (let i = r[0]; i <= r[1]; i++) this.cells[j * this.nx + i].push(c);
     return c;
+  }
+
+  // Convex hull collider. points: world-space vertices [[x,y,z]...];
+  // planes: outward face planes [[nx,ny,nz,d]...] (inside: n.p <= d).
+  addHull(points, planes, f = SOLID, tag = null, surf = null) {
+    let x0 = Infinity, y0 = Infinity, z0 = Infinity, x1 = -Infinity, y1 = -Infinity, z1 = -Infinity;
+    for (const [x, y, z] of points) {
+      if (x < x0) x0 = x; if (y < y0) y0 = y; if (z < z0) z0 = z;
+      if (x > x1) x1 = x; if (y > y1) y1 = y; if (z > z1) z1 = z;
+    }
+    const poly = hull2d(points.map((p) => [p[0], p[2]]));
+    // outward edge normals of the footprint (for body pushes)
+    const edges = [];
+    for (let i = 0; i < poly.length; i++) {
+      const [ax, az] = poly[i], [bx, bz] = poly[(i + 1) % poly.length];
+      const ex = bx - ax, ez = bz - az, len = Math.hypot(ex, ez) || 1;
+      const nx = ez / len, nz = -ex / len; // CCW polygon: outward is to the right
+      edges.push([nx, nz, nx * ax + nz * az]);
+    }
+    return this.add(x0, y0, z0, x1, y1, z1, f, tag, surf, { planes, poly, edges });
+  }
+
+  // Closest point of a collider's footprint to (x, z): writes _qx, _qz.
+  // Inside the footprint the point itself is returned.
+  _near(c, x, z) {
+    const h = c.hull;
+    if (!h) {
+      this._qx = x < c.x0 ? c.x0 : x > c.x1 ? c.x1 : x;
+      this._qz = z < c.z0 ? c.z0 : z > c.z1 ? c.z1 : z;
+      return;
+    }
+    let inside = true;
+    for (const [nx, nz, d] of h.edges) if (nx * x + nz * z > d) { inside = false; break; }
+    if (inside) { this._qx = x; this._qz = z; return; }
+    let best = Infinity;
+    const p = h.poly;
+    for (let i = 0; i < p.length; i++) {
+      const [ax, az] = p[i], [bx, bz] = p[(i + 1) % p.length];
+      const ex = bx - ax, ez = bz - az;
+      const l2 = ex * ex + ez * ez;
+      let t = l2 > 0 ? ((x - ax) * ex + (z - az) * ez) / l2 : 0;
+      t = t < 0 ? 0 : t > 1 ? 1 : t;
+      const qx = ax + ex * t, qz = az + ez * t;
+      const d2 = (x - qx) ** 2 + (z - qz) ** 2;
+      if (d2 < best) { best = d2; this._qx = qx; this._qz = qz; }
+    }
+  }
+
+  // Ray against a hull: entry distance or -1; the entry normal goes to _hn.
+  _rayHull(c, ox, oy, oz, dx, dy, dz) {
+    let tmin = -Infinity, tmax = Infinity, bn = null;
+    for (const pl of c.hull.planes) {
+      const den = pl[0] * dx + pl[1] * dy + pl[2] * dz;
+      const dist = pl[0] * ox + pl[1] * oy + pl[2] * oz - pl[3];
+      if (Math.abs(den) < 1e-12) { if (dist > 0) return -1; continue; }
+      const t = -dist / den;
+      if (den < 0) { if (t > tmin) { tmin = t; bn = pl; } } else if (t < tmax) tmax = t;
+      if (tmin > tmax) return -1;
+    }
+    if (tmax < 0) return -1;
+    if (tmin < 0) { this._hn = null; return 0; }
+    this._hn = bn;
+    return tmin;
   }
 
   _range(x0, z0, x1, z1) {
@@ -126,7 +194,16 @@ export class World {
           if (c.s === st) continue;
           c.s = st;
           if (!(c.f & mask)) continue;
-          const t = this._rayBox(ox, oy, oz, dx, dy, dz, c.x0, c.y0, c.z0, c.x1, c.y1, c.z1);
+          let t = this._rayBox(ox, oy, oz, dx, dy, dz, c.x0, c.y0, c.z0, c.x1, c.y1, c.z1);
+          if (t >= 0 && c.hull) {
+            t = this._rayHull(c, ox, oy, oz, dx, dy, dz);
+            if (t >= 0 && t < best) {
+              best = t; found = true; bcol = c;
+              const n = this._hn;
+              if (n) { nx = n[0]; ny = n[1]; nz = n[2]; } else { nx = -dx; ny = -dy; nz = -dz; }
+            }
+            continue;
+          }
           if (t >= 0 && t < best) {
             best = t; found = true; bcol = c;
             const ax = this._ax;
@@ -175,9 +252,8 @@ export class World {
     const list = this.gather(x - r, z - r, x + r, z + r, this._olist);
     for (const c of list) {
       if (!(c.f & MOVE) || c.y1 <= yA + EPS || c.y0 >= yB || c.y1 <= ignoreBelow) continue;
-      const qx = x < c.x0 ? c.x0 : x > c.x1 ? c.x1 : x;
-      const qz = z < c.z0 ? c.z0 : z > c.z1 ? c.z1 : z;
-      if ((x - qx) ** 2 + (z - qz) ** 2 < r * r) return true;
+      this._near(c, x, z);
+      if ((x - this._qx) ** 2 + (z - this._qz) ** 2 < r * r) return true;
     }
     for (const d of this.doors) {
       if (d.y1 <= yA || d.y0 >= yB) continue;
@@ -195,9 +271,8 @@ export class World {
       if (!(c.f & MOVE)) continue;
       const top = c.y1;
       if (top > y + EPS || top < y - maxDrop || top <= best) continue;
-      const qx = x < c.x0 ? c.x0 : x > c.x1 ? c.x1 : x;
-      const qz = z < c.z0 ? c.z0 : z > c.z1 ? c.z1 : z;
-      if ((x - qx) ** 2 + (z - qz) ** 2 < r * r) { best = top; bestCol = c; }
+      this._near(c, x, z);
+      if ((x - this._qx) ** 2 + (z - this._qz) ** 2 < r * r) { best = top; bestCol = c; }
     }
     this._lastGroundCol = bestCol;
     return best === -Infinity ? null : best;
@@ -249,9 +324,8 @@ export class World {
       for (const c of list) {
         if (!(c.f & MOVE)) continue;
         if (c.y1 <= b.y + 0.02 || c.y0 >= b.y + b.h) continue;
-        const qx = b.x < c.x0 ? c.x0 : b.x > c.x1 ? c.x1 : b.x;
-        const qz = b.z < c.z0 ? c.z0 : b.z > c.z1 ? c.z1 : b.z;
-        let dx = b.x - qx, dz = b.z - qz;
+        this._near(c, b.x, b.z);
+        let dx = b.x - this._qx, dz = b.z - this._qz;
         const d2 = dx * dx + dz * dz;
         if (d2 >= r * r) continue;
         if (wasGrounded && c.y1 - b.y <= b.stepH && !this.overlaps(b.x, b.z, r * 0.9, c.y1, c.y1 + b.h, c.y1)) {
@@ -265,6 +339,13 @@ export class World {
           b.x += dx * p; b.z += dz * p;
           const vn = b.vx * dx + b.vz * dz;
           if (vn < 0) { b.vx -= vn * dx; b.vz -= vn * dz; }
+        } else if (c.hull) {
+          // centre inside a hull footprint: leave through the nearest edge
+          let bn = null, bp = Infinity;
+          for (const e of c.hull.edges) { const pen = e[2] - (e[0] * b.x + e[1] * b.z); if (pen < bp) { bp = pen; bn = e; } }
+          b.x += bn[0] * (bp + r); b.z += bn[1] * (bp + r);
+          const vn = b.vx * bn[0] + b.vz * bn[1];
+          if (vn < 0) { b.vx -= vn * bn[0]; b.vz -= vn * bn[1]; }
         } else {
           // centre inside the box: leave along the shallowest axis
           const pl = b.x - c.x0 + r, pr = c.x1 - b.x + r, pb = b.z - c.z0 + r, pf = c.z1 - b.z + r;
@@ -306,9 +387,8 @@ export class World {
       for (const c of list) {
         if (!(c.f & MOVE)) continue;
         if (c.y1 > y0 + EPS || c.y1 <= y1 || c.y1 <= top) continue;
-        const qx = b.x < c.x0 ? c.x0 : b.x > c.x1 ? c.x1 : b.x;
-        const qz = b.z < c.z0 ? c.z0 : b.z > c.z1 ? c.z1 : b.z;
-        if ((b.x - qx) ** 2 + (b.z - qz) ** 2 < rr * rr) { top = c.y1; groundCol = c; }
+        this._near(c, b.x, b.z);
+        if ((b.x - this._qx) ** 2 + (b.z - this._qz) ** 2 < rr * rr) { top = c.y1; groundCol = c; }
       }
       if (top > -Infinity) { b.y = top; b.vy = 0; landed = true; } else b.y = y1;
     } else {
@@ -318,9 +398,8 @@ export class World {
       for (const c of list) {
         if (!(c.f & MOVE)) continue;
         if (c.y0 < head0 - EPS || c.y0 >= head1 || c.y0 >= ceil) continue;
-        const qx = b.x < c.x0 ? c.x0 : b.x > c.x1 ? c.x1 : b.x;
-        const qz = b.z < c.z0 ? c.z0 : b.z > c.z1 ? c.z1 : b.z;
-        if ((b.x - qx) ** 2 + (b.z - qz) ** 2 < rr * rr) ceil = c.y0;
+        this._near(c, b.x, b.z);
+        if ((b.x - this._qx) ** 2 + (b.z - this._qz) ** 2 < rr * rr) ceil = c.y0;
       }
       if (ceil < Infinity) { b.y = ceil - b.h; b.vy = 0; } else b.y = y1;
     }
@@ -345,4 +424,16 @@ export class World {
 // Surface under a body, for footstep sounds.
 export function surfaceOf(world, b) {
   return (b.groundCol && b.groundCol.surf) || world.groundSurf;
+}
+
+// Convex hull of 2D points, counter-clockwise (monotone chain).
+export function hull2d(pts) {
+  const p = pts.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  if (p.length < 3) return p;
+  const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const lo = [], up = [];
+  for (const q of p) { while (lo.length >= 2 && cross(lo[lo.length - 2], lo[lo.length - 1], q) <= 1e-9) lo.pop(); lo.push(q); }
+  for (let i = p.length - 1; i >= 0; i--) { const q = p[i]; while (up.length >= 2 && cross(up[up.length - 2], up[up.length - 1], q) <= 1e-9) up.pop(); up.push(q); }
+  up.pop(); lo.pop();
+  return lo.concat(up);
 }

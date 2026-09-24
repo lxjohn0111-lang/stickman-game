@@ -1,6 +1,6 @@
 # One Way Out
 
-A first-person stickman shooter campaign for the browser: eight levels, three difficulties, Endless Mode, and two visual styles you can switch at any moment. It is built for CrazyGames: it's playable within two clicks, it works with keyboard and mouse or with touch controls on phones and tablets, it pauses on focus loss, and it saves progress through the CrazyGames SDK's data module (localStorage everywhere else).
+A first-person stickman shooter campaign for the browser: eight levels, three difficulties, Endless Mode, and two visual styles you can switch at any moment (Neobrutalist by default, Classic ink-on-paper as the alternative). It is built for CrazyGames: it's playable within two clicks, it works with keyboard and mouse or with touch controls on phones and tablets, it pauses on focus loss, and it saves progress through the CrazyGames SDK's data module (localStorage everywhere else).
 
 (The game was called *Way Through* before; saves from that version carry over.)
 
@@ -88,6 +88,7 @@ Kills are worth 100 and headshots add 50. Each kill multiplies by a combo: +10% 
   - **Sniper:** a thin red laser tracks you for about 0.8 s, freezes for the last 0.25 s, then fires, so moving dodges it.
   - **Commander:** a boss.
   - **Civilians:** grey (Classic) or blue (Neo), with their hands up.
+  - Fighters are solid black in both styles, so they stand out against Classic's white paper as much as against Neo's colours.
 - **Enemy spawns:** reinforcements come in only through doors, gates, stairways or distant entries that you can't see and that aren't behind you.
 - **Checkpoints** arm when you pass them and activate once the fighting near you has ended, with a "CHECKPOINT" notice. Restoring one gives you full health, the weapons and ammo you had there, and the enemies that were still alive then (at their posts). It also restores objective state, pickups, doors, hazards and level state such as power, alarms and the helicopter. Cleared encounters never respawn.
 - **Level machinery:**
@@ -117,15 +118,26 @@ Kills are worth 100 and headshots add 50. Each kill multiplies by a combo: +10% 
 - **Loading:** levels load in stages over several frames with a progress bar. Geometry, per-level textures, enemies, pickups, effects and loops are disposed or reset between levels.
 - **Buttons** have hover, active and focus states in both styles, and screens fade in quickly.
 
+## Collision and rendering accuracy
+
+- **Hitboxes follow the shapes.** Boxes collide as boxes. Rocks and dunes, tents, pitched roofs, furnaces, tanks, towers, lamp posts, tree trunks, drums, bins and the leaning water-tower legs are convex hulls built from their own geometry. Bullets and sight stop on their real faces, and bodies collide with their footprint. Ramps collide as thin steps under the sloped slab, so the space beneath stays open. Cars, trucks and jersey barriers stop bullets on their body, cabin and stepped profile instead of on a single block around them.
+- **No flickering surfaces.** Before a level's geometry is merged, faces of different materials that share a plane, or lie within 3 cm of each other, are pulled apart:
+  - floor overlays rise 3 cm over the ground;
+  - a wall top under a floor drops 4 mm;
+  - glass, frames and stripes sit 6 mm in front.
+
+  The camera's near plane is 0.1 m, twice the depth precision it had before.
+- `tools/audit-colliders.mjs` casts thousands of bullet rays per level and reports collider hits with no visible surface behind them ("invisible walls"). `tools/audit-zfight.mjs` lists coplanar faces left after the pass.
+
 ## Phones and tablets
 
 Touch screens are detected at start (a coarse primary pointer); a touch laptop switches to touch controls the first time its screen is touched.
 
 - **Move:** drag anywhere on the left half. The joystick appears under your thumb and follows it if you wander off; the speed is analog, and pushing to the rim sprints.
 - **Look:** drag on the right half. Dragging on the fire button looks as well, so you can aim while shooting.
-- **Buttons:** fire (hold for automatic weapons), steady aim (toggle), jump, crouch (toggle), reload, weapon swap and pause. The interaction prompt under the crosshair ("Open", "Swap for AK Rifle"...) is itself the button. Button size is a setting.
+- **Buttons:** fire (hold for automatic weapons), steady aim (toggle), jump, crouch (toggle), reload, weapon swap, visual style and pause. The interaction prompt under the crosshair ("Open", "Swap for AK Rifle"...) is itself the button. Button size is a setting.
 - **Aim assist** (a setting, on by default): while the fire button is held, the view is pulled gently toward the enemy nearest the crosshair (within about 6°).
-- **Layout:** health and ammo move to the top right so thumbs don't cover them; menus, Level Select and every card are laid out for landscape phone screens down to 740x360. In portrait a "Turn your device" card appears and play pauses.
+- **Layout:** health and ammo move to the top right so thumbs don't cover them; menus, Level Select and every card are laid out for landscape phone screens down to 740x360, and the menus, settings, style choice and cards also work in portrait. Only play needs landscape: turning the phone upright pauses, and a level started or resumed in portrait shows a "Turn your device" card and continues once it is turned.
 - **Defaults:** Low quality on the first run (the player can raise it), no pointer lock, touch wording in the hints, tips, tutorial overlay and controls page. Outside CrazyGames, starting a level also asks for fullscreen and a landscape lock where the browser allows it.
 
 ## CrazyGames SDK
@@ -248,6 +260,9 @@ The results below come from headless Chromium with SwiftShader.
   - A hanging, disabled or missing SDK falls back to localStorage without errors.
   - Old *Way Through* saves migrate.
 - The desktop suites (systems, pointer lock, UI) were re-run after the rename, touch and SDK changes and still pass.
+- **Hitboxes and flicker** (`tools/audit-colliders.mjs`, 2,500 bullet rays per level; `tools/audit-zfight.mjs`):
+  - Collider hits with nothing visible within 30 cm dropped from 717 to 38 across the eight levels. Levels 2, 6 and 8 have none. The desert went from 405 (rocks and tents) to 9, all on the three radio masts, whose hit box is deliberately the whole lattice so they are fair targets. The factory went from 58 (furnaces) to 0. The rest are single hits on the few-centimetre corners of stepped ramps and thin posts.
+  - Coplanar or near-coplanar faces of different materials went from 388 to 0.
 - **Store media** (`tools/`): the covers (1920x1080, 800x1200, 800x800) and both preview videos (1920x1080 and 1080x1620, 18 s at 30 fps, H.264, no audio track) are rendered by the game itself. The autopilot plays real fights in six levels; one clip switches style mid-fight.
 - **Pointer lock** (`tests/lock.mjs`): lock on Start, Esc → pause, a refused re-lock → "Click to resume", and a sandboxed iframe → mouse-move fallback.
 - **Performance:** about 50 to 125 draw calls per level in Classic (from the quality run; Neo adds a shadow pass), everything instanced or merged per material role.

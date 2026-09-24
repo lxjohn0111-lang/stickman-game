@@ -40,8 +40,8 @@ function* build(K) {
   const waterTower = (x, z) => {
     for (const [dx, dz] of [[-1.6, -1.6], [1.6, -1.6], [-1.6, 1.6], [1.6, 1.6]]) K.box('steel', x + dx - 0.12, 0, z + dz - 0.12, x + dx + 0.12, 8, z + dz + 0.12);
     for (const dz of [-1.6, 1.6]) K.rod('steel', V(x - 1.6, 1, z + dz), V(x + 1.6, 6, z + dz), 0.05);
-    K.cyl('tank', x, 10, z, 2.6, 2.6, 4, 14);
-    K.cyl('tank', x, 12.6, z, 0.2, 2.8, 1.2, 14);
+    K.solidCyl('tank', x, 10, z, 2.6, 2.6, 4, 14, {}, 7, 'metal');
+    K.solidCyl('tank', x, 12.6, z, 0.2, 2.8, 1.2, 14, {}, 7, 'metal');
   };
 
   // ------------------------------------------------------------ sea, dock, jetty
@@ -73,7 +73,7 @@ function* build(K) {
   K.wall('stone', 'z', -43, 2, -62, 36, 0, WH);
   K.wall('stone', 'z', 43, 2, -62, 36, 0, WH);
   K.wall('stone', 'x', -61, 2, -44, 44, 0, WH);
-  for (const x of [-44, 44]) for (const z of [-62, 38]) { K.cyl('stoneDark', x, WH / 2 + 1, z, 3.2, 3.6, WH + 2, 10); K.cyl('flag', x, WH + 3, z, 0.001, 3.3, 2, 10); }
+  for (const x of [-44, 44]) for (const z of [-62, 38]) { K.solidCyl('stoneDark', x, WH / 2 + 1, z, 3.2, 3.6, WH + 2, 10); K.cyl('flag', x, WH + 3, z, 0.001, 3.3, 2, 10); }
   K.box('stoneDark', -4.5, 5, 35.8, 4.5, 7, 38.2, { col: false });
   for (let x = -2.6; x < 3; x += 0.6) K.rod('steel', V(x, 5, 37), V(x, 4.2, 37), 0.05, 4);
   K.sign('SEA GATE', 0, 6.2, 38.25, 4, 0.7, 1);

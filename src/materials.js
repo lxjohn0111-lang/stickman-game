@@ -161,10 +161,12 @@ export class Materials {
         m.polygonOffsetUnits = 1;
         if (def.instanceTint) {
           // Classic is emissive-driven, so let the per-instance colour tint
-          // the emissive term too (vColor is the instance colour).
+          // the emissive term too (vColor is the instance colour). The
+          // fragment shader only sees USE_COLOR for instance colours;
+          // USE_INSTANCING_COLOR is defined in the vertex shader alone.
           m.onBeforeCompile = (sh) => {
             sh.fragmentShader = sh.fragmentShader.replace('#include <emissivemap_fragment>',
-              '#include <emissivemap_fragment>\n#ifdef USE_INSTANCING_COLOR\ntotalEmissiveRadiance *= vColor;\n#endif');
+              '#include <emissivemap_fragment>\n#if defined( USE_COLOR ) || defined( USE_INSTANCING_COLOR )\ntotalEmissiveRadiance *= vColor;\n#endif');
           };
         }
       }

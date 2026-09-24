@@ -69,7 +69,9 @@ class Game {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.scene = new THREE.Scene();
-    this.camera = new THREE.PerspectiveCamera(settings.fov, 1, 0.05, 700);
+    // near 0.1: twice the depth precision of 0.05 (less far-off flicker); the
+    // body keeps the camera 0.3 m from walls, the gun has its own camera
+    this.camera = new THREE.PerspectiveCamera(settings.fov, 1, 0.1, 700);
     this.camera.rotation.order = 'YXZ';
     this.scene.fog = new THREE.Fog(0xffffff, 30, 150);
 
@@ -241,13 +243,21 @@ class Game {
       this.ui.applyTexts();
       if (this.state === 'menu') this.ui.show('menu');
     }, true);
-    // phones: the game is landscape only; turning to portrait pauses it
-    window.addEventListener('resize', () => {
-      if (this.touch.active && window.innerHeight > window.innerWidth) this.autoPause();
-    });
+    // phones: play is landscape only (menus work either way). Turning to
+    // portrait pauses; a level started or resumed in portrait waits for
+    // the device to turn.
+    window.addEventListener('resize', () => this._orientation());
     // auto-pause whenever the page loses focus
     document.addEventListener('visibilitychange', () => { if (document.hidden) this.autoPause(); });
     window.addEventListener('blur', () => this.autoPause());
+  }
+
+  _portrait() { return this.touch.active && window.innerHeight > window.innerWidth; }
+
+  _orientation() {
+    if (!this.touch.active) return;
+    if (this._portrait()) { if (this.state === 'playing') this.pause(); } else if (this.state === 'lockwait') this._enterPlaying();
+    document.body.classList.toggle('need-landscape', this._portrait() && this.state === 'lockwait');
   }
 
   autoPause() {
@@ -487,11 +497,12 @@ class Game {
     if (def.tutorial && !this.endlessMode) this.ui.showOverlay();
     if (!this.endlessMode) this.ui.objective(this.mission.label, false);
     this.time = Math.max(this.time, 0);
-    if (this.input.fallback || this.input.locked) this._enterPlaying();
+    if ((this.input.fallback || this.input.locked) && !this._portrait()) this._enterPlaying();
     else {
       this.state = 'lockwait';
       this.ui.show('hud');
     }
+    this._orientation();
   }
 
   async startEndless() {
@@ -531,6 +542,7 @@ class Game {
 
   _enterPlaying() {
     this.state = 'playing';
+    document.body.classList.remove('need-landscape');
     this.input.capture = true;
     this.input.takeLook();
     this.ui.show('hud');
@@ -544,6 +556,7 @@ class Game {
     this.input.releaseAll();
     this.touch.reset();
     this.input.exitLock();
+    document.body.classList.remove('need-landscape');
     this.ui.show('pause');
   }
 
@@ -551,6 +564,7 @@ class Game {
   resume() {
     this.audio.unlock();
     if (this.state !== 'paused' && this.state !== 'lockwait') return;
+    if (this._portrait()) { this.state = 'lockwait'; this.ui.show('hud'); this._orientation(); return; }
     if (this.input.fallback) { this._enterPlaying(); return; }
     this.state = 'lockwait';
     this.ui.show('hud');
@@ -579,11 +593,13 @@ class Game {
     this.state = 'lockwait';
     this.ui.show('hud');
     this.input.requestLock();
-    if (this.input.fallback || this.input.locked) this._enterPlaying();
+    if ((this.input.fallback || this.input.locked) && !this._portrait()) this._enterPlaying();
+    this._orientation();
   }
 
   toMainMenu() {
     this.state = 'menu';
+    document.body.classList.remove('need-landscape');
     this.touch.reset();
     this.endlessMode = false;
     this.endless.stop();
@@ -693,7 +709,7 @@ class Game {
     sun.position.set(pc.p[0] + def.env.neo.sun[0], def.env.neo.sun[1], pc.p[2] + def.env.neo.sun[2]);
     sun.target.position.set(pc.p[0], 0, pc.p[2]);
     const W = 480, H = 270;
-    const cam = new THREE.PerspectiveCamera(70, W / H, 0.05, 700);
+    const cam = new THREE.PerspectiveCamera(70, W / H, 0.1, 700);
     cam.position.set(...pc.p);
     cam.rotation.set(pc.pitch, pc.yaw, 0, 'YXZ');
     cam.updateMatrixWorld();
