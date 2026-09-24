@@ -6,5 +6,6 @@ import desert from './desert.js';
 import hotel from './hotel.js';
 import factory from './factory.js';
 import city from './city.js';
+import fortress from './fortress.js';
 
-export const LEVELS = [northgate, port, metro, desert, hotel, factory, city];
+export const LEVELS = [northgate, port, metro, desert, hotel, factory, city, fortress];

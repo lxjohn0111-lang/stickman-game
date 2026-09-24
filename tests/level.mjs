@@ -44,7 +44,16 @@ for (let chunk = 0; chunk < secs / 10; chunk++) {
   lastIdx = res.idx;
   if (res.state === 'results' || res.done) break;
 }
-const final = await page.evaluate(() => { const g = WT.game; return { state: g.state, results: g.state === 'results' ? g.mission.results() : null, bot: BOT2.st.log, draws: g.drawCalls }; });
+const final = await page.evaluate(() => {
+  const g = WT.game;
+  const o = { state: g.state, results: g.state === 'results' ? g.mission.results() : null, bot: BOT2.st.log, draws: g.drawCalls };
+  if (g.state !== 'results') {
+    const P = g.player;
+    o.debug = { p: [P.x, P.y, P.z].map((v) => +v.toFixed(2)), goal: BOT2.goal(), path: BOT2.st.path && BOT2.st.path.map((s) => [s.node.x, s.node.y, s.node.z].map((v) => +v.toFixed(1))), idx: BOT2.st.idx,
+      boss: g.enemies.list.filter((e) => e.R.boss).map((e) => ({ p: [e.body.x, e.body.y, e.body.z].map((v) => +v.toFixed(2)), st: e.state, stage: e.stage, reloc: e.relocating, hp: Math.round(e.health), path: e.path && e.path.map((s) => [s.node.x, s.node.y, s.node.z].map((v) => +v.toFixed(1))) })) };
+  }
+  return o;
+});
 console.log('FINAL', JSON.stringify(final), 'deaths', deaths, 'wall', ((Date.now() - t0) / 1000).toFixed(0) + 's');
 if (shots) await shot('end');
 const errs = logs.filter((l) => l.startsWith('pageerror') || l.startsWith('error'));

@@ -843,13 +843,15 @@ export class LevelKit {
     }
     for (const [x, y, z] of this.navPoints) addChecked(x, y, z, '', 0.3);
     yield 0.2;
+    const ends = [];
     for (const ch of this.navChains) {
       let prev = null;
-      for (const [x, y, z] of ch.points) {
+      ch.points.forEach(([x, y, z], i) => {
         const n = nav.add(x, y, z, ch.area);
         if (prev) nav.link(prev, n, null, ch.special);
+        if (i === 0 || i === ch.points.length - 1) ends.push(n);
         prev = n;
-      }
+      });
     }
     for (const d of this.navDoorPairs) {
       const nx = -Math.sin(d.closed), nz = Math.cos(d.closed);
@@ -860,6 +862,23 @@ export class LevelKit {
     // link everything that can walk to everything nearby
     const gen = nav.autoLinkGen(3.4, this.doors);
     for (let r = gen.next(); !r.done; r = gen.next()) yield 0.25 + r.value * 0.7;
+    // chain ends (stair feet and tops) squeezed between rails and walls:
+    // link them to nearby nodes with a plain centre-line check
+    for (const e of ends) {
+      if (e.links.length > 1) continue;
+      const cand = nav.near(e.x, e.z, 3.4, []).filter((q) => q !== e && Math.abs(q.y - e.y) < 0.3)
+        .sort((a, b) => Math.hypot(a.x - e.x, a.z - e.z) - Math.hypot(b.x - e.x, b.z - e.z));
+      let made = 0;
+      for (const q of cand) {
+        if (made >= 3) break;
+        if (Math.hypot(q.x - e.x, q.z - e.z) > 3.4) break;
+        if (!w.clear(e.x, e.y + 0.5, e.z, q.x, q.y + 0.5, q.z, MOVE, true) || !w.clear(e.x, e.y + 1.3, e.z, q.x, q.y + 1.3, q.z, MOVE, true)) continue;
+        let door = null;
+        for (const d of this.doors) if (Math.abs(d.y0 - e.y) < 1 && d.crosses(e.x, e.z, q.x, q.z)) { door = d; break; }
+        nav.link(e, q, door);
+        made++;
+      }
+    }
     return { named };
   }
 }

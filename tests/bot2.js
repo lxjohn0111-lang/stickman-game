@@ -46,7 +46,8 @@ window.BOT2 = (() => {
       if (!z) return m.hasMarker ? { x: m.marker.x, y: m.marker.y - 1, z: m.marker.z } : null;
       let best = null, bd = Infinity;
       for (const n of g.nav.nodes) {
-        if (n.x < z.x0 + 0.5 || n.x > z.x1 - 0.5 || n.z < z.z0 + 0.5 || n.z > z.z1 - 0.5 || n.y < z.y0 || n.y > z.y1) continue;
+        const mg = Math.min(1.5, (z.x1 - z.x0) / 4, (z.z1 - z.z0) / 4);
+        if (n.x < z.x0 + mg || n.x > z.x1 - mg || n.z < z.z0 + mg || n.z > z.z1 - mg || n.y < z.y0 || n.y > z.y1) continue;
         const dd = Math.hypot(n.x - P.x, n.y - P.y, n.z - P.z);
         if (dd < bd) { bd = dd; best = n; }
       }
@@ -96,7 +97,9 @@ window.BOT2 = (() => {
     const tgt = dry ? null : visibleEnemy();
     if (tgt && !(gl && gl.use && Math.hypot(gl.x - p.x, gl.z - p.z) < 1.2)) {
       st.target = tgt.e.id;
-      if (tgt.e.hitUp < 0.3 && tgt.e.stagger <= 0) ignore.set(tgt.e.id, (ignore.get(tgt.e.id) || 0) + 1 / 60); else ignore.set(tgt.e.id, 0);
+      const hurt = tgt.e._botHp !== undefined && tgt.e.health < tgt.e._botHp;
+      tgt.e._botHp = tgt.e.health;
+      if (!hurt) ignore.set(tgt.e.id, (ignore.get(tgt.e.id) || 0) + 1 / 60); else ignore.set(tgt.e.id, 0);
       const err = aimAt(tgt.x, tgt.y, tgt.z, 0.5);
       if (err < 0.09) g.input.left = true;
       if (!p.weapon.def.auto && g.input.left) { g.input.leftPressed = (st.fireHold++ % 6) === 0; g.input.left = g.input.leftPressed; }
