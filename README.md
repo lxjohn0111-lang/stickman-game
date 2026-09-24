@@ -207,14 +207,14 @@ The results below come from headless Chromium with SwiftShader.
 
 - **Campaign** (`tests/campaign.mjs`): an autopilot that follows each objective and drives the real input state played all eight levels in order on Normal, with no god mode. It started from the menu's Play button and took the results card's **Next Level** each time. When it died it pressed **Restart Checkpoint** on the death card. It also switched style twice in the middle of fights on every level.
   - After Level 3 the browser was closed and relaunched on the same profile. Progress was still there (Level 4 unlocked, Level 3's record kept), and Continue went on to Level 4.
-  - Levels 4 to 8 were then played in a second run, started with `--from 4`, after a fix to the test's own click handling. The campaign-complete card appeared and Endless Mode unlocked.
+  - This was re-run after the hitbox, flicker and style changes, with Neobrutalist as the starting style. Levels 1 to 5 passed in one run. Level 6 then failed: the bot reached the first checkpoint with a shotgun holding 5 shells, and every restore brought that loadout back (26 deaths). That was a real trap for players too. Checkpoint restores now top ammo up to three magazines per gun, and levels 6 to 8 were played again from the menu (`--from 6`). The campaign-complete card appeared and Endless Mode unlocked.
 
   | Level | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
   | --- | --- | --- | --- | --- | --- | --- | --- | --- |
   | Result | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-  | Deaths → Restart Checkpoint | 0 | 1 | 0 | 8 | 0 | 1 | 1 | 2 |
-  | Checkpoints reached | 3 | 2 | 3 | 3 | 2 | 3 | 3 | 3 |
-  | Stars | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 |
+  | Deaths → Restart Checkpoint | 0 | 13 | 0 | 7 | 0 | 8 | 2 | 0 |
+  | Checkpoints reached | 3 | 3 | 3 | 2 | 2 | 3 | 3 | 3 |
+  | Stars | 3 | 2 | 3 | 3 | 3 | 3 | 3 | 3 |
 
   The autopilot aims perfectly and knows every route, so its times (1 to 4 minutes a level) say nothing about how long a person takes. The 45 to 60 minute estimate for a first run is a design target and hasn't been timed with players.
 - **Per level** (`tests/level.mjs`): each level also completes on its own; every objective type, checkpoint, wave, hazard and the boss stages were exercised.
