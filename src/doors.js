@@ -10,7 +10,12 @@ const OPEN_ANGLE = (Math.PI / 2) * 0.96;
 export class Door {
   // hx,hz: hinge; angle: closed direction of the leaf (radians in XZ, 0 = +X);
   // w: leaf width; h: height; y0: floor height.
-  constructor({ hx, hz, angle, w = 0.92, h = 2.08, y0 = 0, t = 0.06, name = 'door' }) {
+  constructor({ hx, hz, angle, w = 0.92, h = 2.08, y0 = 0, t = 0.06, name = 'door', id = null, locked = false, role = 'door', panels = true, speed = 1 }) {
+    this.id = id;
+    this.locked = locked;
+    this.role = role;
+    this.panels = panels;
+    this.speed = speed;
     this.hx = hx; this.hz = hz;
     this.closed = angle;
     this.angle = angle;
@@ -23,6 +28,7 @@ export class Door {
     this.isOpen = false;
     this.moving = false;
     this.group = null;
+    this.startLocked = locked;
   }
 
   get cx() { return this.hx + Math.cos(this.closed) * this.w * 0.5; }
@@ -32,7 +38,20 @@ export class Door {
     const g = new THREE.Group();
     const pb = new PartBuilder();
     const w = this.w, h = this.h, t = this.t;
-    pb.box('door', w / 2 + 0.01, h / 2, 0, w - 0.02, h - 0.01, t);
+    pb.box(this.role, w / 2 + 0.01, h / 2, 0, w - 0.02, h - 0.01, t);
+    if (!this.panels) {
+      // plain leaf (gates, container doors): vertical ribs instead of panels
+      for (const s of [-1, 1]) {
+        const z = s * (t / 2 + 0.002);
+        for (let x = 0.2; x < w - 0.1; x += 0.28) pb.line(x, 0.1, z, x, h - 0.1, z);
+      }
+      pb.build(g, materials, { lineMaterial: materials.lines.main });
+      g.position.set(this.hx, this.y0, this.hz);
+      g.rotation.y = -this.angle;
+      scene.add(g);
+      this.group = g;
+      return;
+    }
     // panel inset lines on both faces
     for (const s of [-1, 1]) {
       const z = s * (t / 2 + 0.002);
@@ -58,9 +77,13 @@ export class Door {
   }
 
   toggle(x, z) {
+    if (this.locked) return false;
     if (this.isOpen) this.close();
     else this.open(x, z);
+    return true;
   }
+
+  unlock() { this.locked = false; }
 
   open(x, z) {
     // Opening by +90deg swings the free end towards the +normal side, so pick
@@ -79,6 +102,7 @@ export class Door {
   reset() {
     this.angle = this.target = this.closed;
     this.isOpen = false;
+    this.locked = !!this.startLocked;
     this.moving = false;
     if (this.group) this.group.rotation.y = -this.angle;
   }
@@ -86,7 +110,7 @@ export class Door {
   update(dt) {
     if (!this.moving) return;
     const d = this.target - this.angle;
-    const step = Math.sign(d) * Math.min(Math.abs(d), dt * (1.2 + Math.abs(d) * 5.5));
+    const step = Math.sign(d) * Math.min(Math.abs(d), dt * (1.2 + Math.abs(d) * 5.5) * this.speed);
     this.angle += step;
     if (Math.abs(this.target - this.angle) < 1e-3) { this.angle = this.target; this.moving = false; }
     this.group.rotation.y = -this.angle;

@@ -14,6 +14,9 @@ export const HOLD = {
   shotgun: { pos: new THREE.Vector3(0.17, -0.19, -0.34), rot: new THREE.Euler(0.07, 0.17, 0), s: 0.8 },
   rifle: { pos: new THREE.Vector3(0.17, -0.19, -0.36), rot: new THREE.Euler(0.07, 0.18, 0), s: 0.8 },
   pistol: { pos: new THREE.Vector3(0.15, -0.16, -0.45), rot: new THREE.Euler(0.06, 0.18, 0), s: 0.85 },
+  burst: { pos: new THREE.Vector3(0.17, -0.19, -0.34), rot: new THREE.Euler(0.07, 0.18, 0), s: 0.8 },
+  mpistol: { pos: new THREE.Vector3(0.15, -0.16, -0.44), rot: new THREE.Euler(0.06, 0.18, 0), s: 0.85 },
+  revolver: { pos: new THREE.Vector3(0.15, -0.165, -0.42), rot: new THREE.Euler(0.06, 0.17, 0), s: 0.85 },
 };
 
 const _v = new THREE.Vector3();
@@ -54,10 +57,14 @@ export class ViewModel {
     const lm = this.materials.lines.vm;
     parts.main.build(group, this.materials, { lineMaterial: lm, castShadow: false, receiveShadow: false });
     const movers = {};
-    for (const key of ['pump', 'slide', 'mag']) {
+    for (const key of ['pump', 'slide', 'mag', 'drum']) {
       if (!parts[key]) continue;
       const g = new THREE.Group();
-      parts[key].build(g, this.materials, { lineMaterial: lm, castShadow: false, receiveShadow: false });
+      const inner = new THREE.Group();
+      parts[key].build(inner, this.materials, { lineMaterial: lm, castShadow: false, receiveShadow: false });
+      g.add(inner);
+      if (key === 'drum') g.position.copy(parts.drumPos);
+      g.userData.base = g.position.clone();
       group.add(g);
       movers[key] = g;
     }
@@ -143,7 +150,7 @@ export class ViewModel {
     this.reloadT = -1;
     this.pumpT = -1;
     this.dropT = -1;
-    for (const g of Object.values(this.current.movers)) g.position.set(0, 0, 0);
+    for (const g of Object.values(this.current.movers)) g.position.copy(g.userData.base);
   }
 
   // Shot: kick the gun sharply up and back; a stiff spring returns it in ~5 frames.
@@ -156,7 +163,8 @@ export class ViewModel {
     this.flash.rotation.z = Math.random() * Math.PI;
     const sc = 0.055 + Math.random() * 0.02;
     this.flash.scale.setScalar(sc);
-    if (this.current.id === 'pistol') this.slideT = 0;
+    if (this.current.id === 'pistol' || this.current.id === 'mpistol') this.slideT = 0;
+    if (this.current.movers.drum) this.drumTarget = (this.drumTarget || 0) + Math.PI / 3;
   }
 
   pump() { this.pumpT = 0; }
@@ -243,6 +251,10 @@ export class ViewModel {
       cur.movers.pump.position.z = p * 0.085;
       g.rotation.z += p * 0.05;
       if (t >= 1) this.pumpT = -1;
+    }
+    if (cur.movers.drum) {
+      const d = cur.movers.drum;
+      d.rotation.z += ((this.drumTarget || 0) - d.rotation.z) * Math.min(1, dt * 18);
     }
     if (this.slideT >= 0 && cur.movers.slide) {
       this.slideT += dt;

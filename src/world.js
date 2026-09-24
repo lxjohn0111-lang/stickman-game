@@ -12,16 +12,22 @@ export const MOVE = 1; // blocks bodies
 export const BULLET = 2; // stops bullets
 export const SIGHT = 4; // blocks line of sight
 export const SOLID = MOVE | BULLET | SIGHT;
+export const GLASS = 8; // window panes: bullets crack them on the way through
 
 const EPS = 1e-3;
 
 export class World {
-  constructor() {
+  // bounds: the XZ area covered by the collision grid (anything outside is
+  // clamped into the edge cells, so it still works, just slower).
+  constructor(bounds = { x0: -140, z0: -160, x1: 140, z1: 120 }) {
     this.cs = 4;
-    this.ox = -140;
-    this.oz = -160;
-    this.nx = 70;
-    this.nz = 70;
+    this.ox = bounds.x0;
+    this.oz = bounds.z0;
+    this.nx = Math.max(1, Math.ceil((bounds.x1 - bounds.x0) / this.cs));
+    this.nz = Math.max(1, Math.ceil((bounds.z1 - bounds.z0) / this.cs));
+    this.groundSurf = 'ground';
+    this.ladders = [];
+    this.killY = -5;
     this.cells = new Array(this.nx * this.nz);
     for (let i = 0; i < this.cells.length; i++) this.cells[i] = [];
     this.cols = [];
@@ -34,8 +40,8 @@ export class World {
     this._ax = -1;
   }
 
-  add(x0, y0, z0, x1, y1, z1, f = SOLID, tag = null) {
-    const c = { x0, y0, z0, x1, y1, z1, f, tag, s: 0, i: this.cols.length };
+  add(x0, y0, z0, x1, y1, z1, f = SOLID, tag = null, surf = null) {
+    const c = { x0, y0, z0, x1, y1, z1, f, tag, surf, conv: null, s: 0, i: this.cols.length };
     this.cols.push(c);
     const r = this._range(x0, z0, x1, z1);
     for (let j = r[2]; j <= r[3]; j++) for (let i = r[0]; i <= r[1]; i++) this.cells[j * this.nx + i].push(c);
@@ -183,6 +189,7 @@ export class World {
   // Highest walkable top under a circle within [y - maxDrop, y].
   groundBelow(x, z, r, y, maxDrop) {
     let best = y >= -EPS && y - maxDrop <= 0 ? 0 : -Infinity;
+    let bestCol = null;
     const list = this.gather(x - r, z - r, x + r, z + r, this._glist);
     for (const c of list) {
       if (!(c.f & MOVE)) continue;
@@ -190,8 +197,9 @@ export class World {
       if (top > y + EPS || top < y - maxDrop || top <= best) continue;
       const qx = x < c.x0 ? c.x0 : x > c.x1 ? c.x1 : x;
       const qz = z < c.z0 ? c.z0 : z > c.z1 ? c.z1 : z;
-      if ((x - qx) ** 2 + (z - qz) ** 2 < r * r) best = top;
+      if ((x - qx) ** 2 + (z - qz) ** 2 < r * r) { best = top; bestCol = c; }
     }
+    this._lastGroundCol = bestCol;
     return best === -Infinity ? null : best;
   }
 
@@ -231,8 +239,8 @@ export class World {
     const wasGrounded = b.grounded;
     const r = b.r;
     const feet0 = b.y;
-    b.x += b.vx * dt;
-    b.z += b.vz * dt;
+    b.x += (b.vx + (b.ex || 0)) * dt;
+    b.z += (b.vz + (b.ez || 0)) * dt;
     let stepTop = -Infinity;
     const push = { x: 0, z: 0 };
     for (let iter = 0; iter < 4; iter++) {
@@ -290,6 +298,7 @@ export class World {
     const y1 = y0 + b.vy * dt;
     const rr = r * 0.85;
     let landed = false;
+    let groundCol = null;
     if (b.vy <= 0) {
       let top = -Infinity;
       if (y0 >= -EPS && y1 < 0) top = 0;
@@ -299,7 +308,7 @@ export class World {
         if (c.y1 > y0 + EPS || c.y1 <= y1 || c.y1 <= top) continue;
         const qx = b.x < c.x0 ? c.x0 : b.x > c.x1 ? c.x1 : b.x;
         const qz = b.z < c.z0 ? c.z0 : b.z > c.z1 ? c.z1 : b.z;
-        if ((b.x - qx) ** 2 + (b.z - qz) ** 2 < rr * rr) top = c.y1;
+        if ((b.x - qx) ** 2 + (b.z - qz) ** 2 < rr * rr) { top = c.y1; groundCol = c; }
       }
       if (top > -Infinity) { b.y = top; b.vy = 0; landed = true; } else b.y = y1;
     } else {
@@ -316,6 +325,7 @@ export class World {
       if (ceil < Infinity) { b.y = ceil - b.h; b.vy = 0; } else b.y = y1;
     }
     b.grounded = landed;
+    b.groundCol = landed ? groundCol : null;
     if (landed) b.jumping = false;
 
     // stick to the ground when walking down steps or slopes
@@ -324,9 +334,15 @@ export class World {
       if (g !== null) {
         b.stepDelta = (b.stepDelta || 0) + (g - b.y);
         b.y = g; b.vy = 0; b.grounded = true;
+        b.groundCol = this._lastGroundCol;
       }
     }
-    if (b.y < -5) { b.y = 0; b.vy = 0; }
+    if (b.y < this.killY) { b.y = 0; b.vy = 0; }
     b.fell = feet0 - b.y;
   }
+}
+
+// Surface under a body, for footstep sounds.
+export function surfaceOf(world, b) {
+  return (b.groundCol && b.groundCol.surf) || world.groundSurf;
 }

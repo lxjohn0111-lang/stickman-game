@@ -178,3 +178,86 @@ export function makeToonRamp() {
   tex.needsUpdate = true;
   return tex;
 }
+
+// Conveyor belt surface: dark cross bars on white, tiled along the belt.
+export function makeBeltTexture() {
+  const c = canvas(64, 64);
+  const g = c.getContext('2d');
+  g.fillStyle = '#fff';
+  g.fillRect(0, 0, 64, 64);
+  g.fillStyle = '#111';
+  g.fillRect(0, 0, 64, 10);
+  g.fillRect(0, 32, 64, 4);
+  g.fillRect(0, 0, 4, 64);
+  g.fillRect(60, 0, 4, 64);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.anisotropy = 4;
+  return tex;
+}
+
+// Wet-street reflection streak (vertical smear of a light).
+export function makeStreakTexture() {
+  const c = canvas(32, 128);
+  const g = c.getContext('2d');
+  const grad = g.createLinearGradient(0, 0, 0, 128);
+  grad.addColorStop(0, 'rgba(255,255,255,0)');
+  grad.addColorStop(0.2, 'rgba(255,255,255,0.9)');
+  grad.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = grad;
+  for (let i = 0; i < 6; i++) g.fillRect(6 + Math.random() * 18, 0, 2 + Math.random() * 4, 128);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+// Cracked-glass star for bullet hits on windows.
+export function makeCrackTexture() {
+  const S = 128;
+  const c = canvas(S, S);
+  const g = c.getContext('2d');
+  g.strokeStyle = '#fff';
+  g.lineWidth = 2;
+  g.lineCap = 'round';
+  const cx = S / 2, cy = S / 2;
+  for (let i = 0; i < 9; i++) {
+    const a = (i / 9) * Math.PI * 2 + Math.random() * 0.4;
+    let x = cx, y = cy;
+    g.beginPath();
+    g.moveTo(x, y);
+    for (let k = 0; k < 4; k++) {
+      x += Math.cos(a + (Math.random() - 0.5) * 0.6) * (8 + Math.random() * 10);
+      y += Math.sin(a + (Math.random() - 0.5) * 0.6) * (8 + Math.random() * 10);
+      g.lineTo(x, y);
+    }
+    g.stroke();
+  }
+  for (const r of [10, 22]) {
+    g.beginPath();
+    for (let i = 0; i <= 9; i++) {
+      const a = (i / 9) * Math.PI * 2;
+      const rr = r * (0.8 + Math.random() * 0.4);
+      const px = cx + Math.cos(a) * rr, py = cy + Math.sin(a) * rr;
+      if (i) g.lineTo(px, py); else g.moveTo(px, py);
+    }
+    g.stroke();
+  }
+  g.fillStyle = '#fff';
+  g.beginPath(); g.arc(cx, cy, 4, 0, Math.PI * 2); g.fill();
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+// Snow footprint (a pair of dark ovals).
+export function makeFootTexture() {
+  const c = canvas(64, 64);
+  const g = c.getContext('2d');
+  g.fillStyle = '#fff';
+  g.beginPath(); g.ellipse(20, 32, 7, 16, 0, 0, Math.PI * 2); g.fill();
+  g.beginPath(); g.ellipse(44, 26, 7, 16, 0, 0, Math.PI * 2); g.fill();
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}

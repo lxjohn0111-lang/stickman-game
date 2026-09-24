@@ -10,6 +10,7 @@ export const DEFAULTS = {
   invertY: false,
   fov: 75,
   master: 0.8,
+  music: 0.35,
   sfx: 1.0,
   ambience: 0.5,
   difficulty: 'normal',

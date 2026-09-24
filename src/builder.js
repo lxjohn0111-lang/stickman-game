@@ -8,6 +8,17 @@ import { LineSegmentsGeometry } from '../vendor/three/addons/lines/LineSegmentsG
 import { ROLE_DEFS } from './materials.js';
 import { SOLID } from './world.js';
 
+// Footstep surface for colliders built from a role (roof, indoor, metal, snow, ground).
+export const ROLE_SURF = {
+  roof: 'roof', parapet: 'roof', gravel: 'roof',
+  floor: 'indoor', tile: 'indoor', ceiling: 'indoor', concrete: 'indoor', counter: 'indoor', table: 'indoor',
+  carpet: 'indoor', wood: 'indoor', stoneFloor: 'indoor', platform: 'indoor', asphalt: 'ground', marble: 'indoor',
+  steel: 'metal', crate: 'metal', grate: 'metal', catwalk: 'metal', container: 'metal', cont1: 'metal', cont2: 'metal',
+  cont3: 'metal', cont4: 'metal', crane: 'metal', hull: 'metal', train: 'metal', machine: 'metal', belt: 'metal', appliance: 'metal',
+  snow: 'snow', ice: 'snow',
+  ground: 'ground', sand: 'ground', path: 'ground', rock: 'ground', dirt: 'ground', sandbag: 'ground', grass: 'ground',
+};
+
 const _m = new THREE.Matrix4();
 const _q = new THREE.Quaternion();
 const _e = new THREE.Euler();
@@ -179,11 +190,12 @@ export class StaticBuilder extends PartBuilder {
   boxMM(role, x0, y0, z0, x1, y1, z1, o = {}) {
     if (role) this.box(role, (x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2, x1 - x0, y1 - y0, z1 - z0, o);
     const col = o.col === undefined ? SOLID : o.col;
-    if (col) this.world.add(x0, y0, z0, x1, y1, z1, col, o.tag);
+    if (col) return this.world.add(x0, y0, z0, x1, y1, z1, col, o.tag, o.surf || ROLE_SURF[role] || null);
+    return null;
   }
 
-  collider(x0, y0, z0, x1, y1, z1, flags = SOLID, tag) {
-    this.world.add(x0, y0, z0, x1, y1, z1, flags, tag);
+  collider(x0, y0, z0, x1, y1, z1, flags = SOLID, tag, surf = null) {
+    return this.world.add(x0, y0, z0, x1, y1, z1, flags, tag, surf);
   }
 
   fenceLine(ax, ay, az, bx, by, bz) {
