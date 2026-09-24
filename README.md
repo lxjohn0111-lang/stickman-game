@@ -90,7 +90,7 @@ Kills are worth 100 and headshots add 50. Each kill multiplies by a combo: +10% 
   - **Civilians:** grey (Classic) or blue (Neo), with their hands up.
   - Fighters are solid black in both styles, so they stand out against Classic's white paper as much as against Neo's colours.
 - **Enemy spawns:** reinforcements come in only through doors, gates, stairways or distant entries that you can't see and that aren't behind you.
-- **Checkpoints** arm when you pass them and activate once the fighting near you has ended, with a "CHECKPOINT" notice. Restoring one gives you full health, the weapons and ammo you had there, and the enemies that were still alive then (at their posts). It also restores objective state, pickups, doors, hazards and level state such as power, alarms and the helicopter. Cleared encounters never respawn.
+- **Checkpoints** arm when you pass them and activate once the fighting near you has ended, with a "CHECKPOINT" notice. Restoring one gives you full health, the weapons and ammo you had there (topped up to at least three magazines per gun, so a checkpoint reached on an empty gun can't trap you), and the enemies that were still alive then (at their posts). It also restores objective state, pickups, doors, hazards and level state such as power, alarms and the helicopter. Cleared encounters never respawn.
 - **Level machinery:**
   - Conveyor belts carry the player, enemies and dropped guns.
   - Steam vents and presses warn with a light, a sound and puffs before they can hurt, and are never unavoidable.

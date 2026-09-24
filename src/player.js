@@ -83,6 +83,17 @@ export class Player {
     this.game.vm.setWeapon(this.weapon.id, true);
   }
 
+  // At least `mags` magazines per carried gun (loaded + reserve), within the
+  // gun's reserve limit. Used when a checkpoint is restored, so a checkpoint
+  // reached on an empty gun can't trap the player in a no-ammo loop.
+  topUpAmmo(mags = 3) {
+    for (const w of [this.slots.main, this.slots.side]) {
+      if (!w) continue;
+      const want = Math.min(w.def.mag * mags, w.def.mag + w.def.reserve);
+      if (w.mag + w.reserve < want) w.reserve = want - w.mag;
+    }
+  }
+
   getLoadout() {
     const s = (w) => (w ? [w.id, w.mag, w.reserve] : null);
     return { main: s(this.slots.main), side: s(this.slots.side), active: this.active };

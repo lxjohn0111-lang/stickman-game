@@ -396,6 +396,7 @@ export class Mission {
     const played = g.player.stats.time;
     g.bullets.reset();
     g.player.reset(s.pos, s.loadout);
+    if (s !== this.startSnap) g.player.topUpAmmo(3);
     g.enemies.restore(s.enemies);
     g.items.restore(s.items);
     g.items.list = g.items.list.filter((p) => p.type !== 'secret' || !this.secretsFound[p.index]);
