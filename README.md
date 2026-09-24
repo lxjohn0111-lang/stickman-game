@@ -226,6 +226,29 @@ The results below come from headless Chromium with SwiftShader.
   - Endless waves rise, sections change, the run ends on death and saves the best wave.
   - Every handwritten title has all its letters, and there are no page errors.
 - **Qualities** (`tests/qualities.mjs`): all eight levels loaded and played for 12 s with the autopilot at Low, Medium and High, with no errors. Colliders, nav graph, spawns and pickups were identical at every preset; only the pixel ratio (0.75 / 1.25 / 2, capped by the display) and the shadow map (1024 / 1536 / 2048) changed, along with outline and particle detail.
+- **Phones** (`tests/mobile.mjs`, an emulated Android phone in landscape, 844x390 and 740x360, driven with real multi-touch events), all passing:
+  - The touch screen is detected, with no pointer lock, Low quality by default and touch wording.
+  - Menus, Level Select, settings, the loading, death and results cards and the pause menu all fit the screen in both styles.
+  - Play then Start goes straight into the level.
+  - The joystick walks forward and sprints at the rim. Walking and looking with two fingers at once works, and lifting the fingers stops.
+  - Look drag works horizontally and vertically.
+  - Every button does its job: fire (hold), reload, jump, crouch and aim toggles, weapon swap, pause and resume.
+  - Tapping the prompt opens a door.
+  - Aim assist pulls the view from 4° off to under 1° in a third of a second of firing.
+  - Portrait shows the "Turn your device" card and pauses.
+- **CrazyGames SDK** (`tests/sdk.mjs`, against a stand-in with the SDK v3 interface that records every call), all passing:
+  - `init` runs before the save is read.
+  - Progress and settings are read from and written to the data module, with nothing in localStorage.
+  - `loadingStart/Stop` wrap the boot and level loads.
+  - `gameplayStart/Stop` follow play, pause, focus loss and death.
+  - `happytime` fires on level complete.
+  - `muteAudio` works both at start and when it changes.
+  - The portal has no fullscreen button.
+  - The upload build in `crazygames upload/game/` loads with the SDK tag in its head.
+  - A hanging, disabled or missing SDK falls back to localStorage without errors.
+  - Old *Way Through* saves migrate.
+- The desktop suites (systems, pointer lock, UI) were re-run after the rename, touch and SDK changes and still pass.
+- **Store media** (`tools/`): the covers (1920x1080, 800x1200, 800x800) and both preview videos (1920x1080 and 1080x1620, 18 s at 30 fps, H.264, no audio track) are rendered by the game itself. The autopilot plays real fights in six levels; one clip switches style mid-fight.
 - **Pointer lock** (`tests/lock.mjs`): lock on Start, Esc → pause, a refused re-lock → "Click to resume", and a sandboxed iframe → mouse-move fallback.
 - **Performance:** about 50 to 125 draw calls per level in Classic (from the quality run; Neo adds a shadow pass), everything instanced or merged per material role.
 
