@@ -128,6 +128,10 @@ const over = await page.evaluate(() => { const g = WT.game; g.godMode = false; g
 check('endless ends on death and saves the best wave', over.best.bestWave >= 4, over);
 await shot('endless-over');
 
+// every handwritten title has a glyph for each letter
+const hw = await page.evaluate(() => [...document.querySelectorAll('svg.hw')].map((s) => [s.getAttribute('aria-label'), s.querySelectorAll('g').length, s.getAttribute('aria-label').replace(/ /g, '').length]));
+check('handwritten titles have every glyph', hw.length >= 3 && hw.every(([, a, b]) => a === b), hw);
+
 const errs = logs.filter((l) => l.startsWith('pageerror'));
 check('no page errors', errs.length === 0, errs.slice(0, 3));
 await browser.close();

@@ -229,6 +229,7 @@ const en = {
   'res.score': 'Score',
   'res.best': 'Best',
   'res.new': 'new',
+  'res.newBest': 'New best',
   'res.next': 'Next Level',
   'res.replay': 'Replay',
   'res.main': 'Main Menu',

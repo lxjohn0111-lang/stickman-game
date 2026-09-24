@@ -149,11 +149,13 @@ tests/                  Playwright harness, objective bot and test suites
 The browser tests need Playwright with Chromium; SwiftShader WebGL is fine.
 
 ```sh
-npm test                          # systems, pointer lock, UI flows, full campaign
+npm test                          # systems, pointer lock, UI flows, qualities, full campaign
 node tests/systems.mjs            # movement, weapons, health, slots, enemies, checkpoints, styles, quality
 node tests/campaign.mjs           # all 8 levels in sequence through the menus on Normal
+                                  # (--from 4 --to 8 to run part of it)
 node tests/level.mjs 5 --god      # one level with the objective bot
 node tests/ui.mjs                 # menus, Level Select, cards, Endless
+node tests/qualities.mjs          # every level at Low, Medium and High
 node tests/views.mjs 3 "x,y,z,yaw,pitch"   # screenshots of a spot in both styles
 ```
 
@@ -161,7 +163,18 @@ node tests/views.mjs 3 "x,y,z,yaw,pitch"   # screenshots of a spot in both style
 
 The results below come from headless Chromium with SwiftShader.
 
-- **Campaign** (`tests/campaign.mjs`): an autopilot that follows each objective and drives the real input state played all eight levels in sequence on Normal, starting from the menu's Play button with no god mode. It died and pressed **Restart Checkpoint** on the death card when it had to. It switched style twice in the middle of fights on every level, and took the results card's **Next Level** each time. After Level 3 the browser was closed and relaunched on the same profile: progress was still there, and Continue went on to Level 4. The campaign-complete card and achievements appeared at the end.
+- **Campaign** (`tests/campaign.mjs`): an autopilot that follows each objective and drives the real input state played all eight levels in order on Normal, with no god mode. It started from the menu's Play button and took the results card's **Next Level** each time. When it died it pressed **Restart Checkpoint** on the death card. It also switched style twice in the middle of fights on every level.
+  - After Level 3 the browser was closed and relaunched on the same profile. Progress was still there (Level 4 unlocked, Level 3's record kept), and Continue went on to Level 4.
+  - Levels 4 to 8 were then played in a second run, started with `--from 4`, after a fix to the test's own click handling. The campaign-complete card appeared and Endless Mode unlocked.
+
+  | Level | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+  | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+  | Result | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+  | Deaths → Restart Checkpoint | 0 | 1 | 0 | 8 | 0 | 1 | 1 | 2 |
+  | Checkpoints reached | 3 | 2 | 3 | 3 | 2 | 3 | 3 | 3 |
+  | Stars | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 |
+
+  The autopilot aims perfectly and knows every route, so its times (1 to 4 minutes a level) say nothing about how long a person takes. The 45 to 60 minute estimate for a first run is a design target and hasn't been timed with players.
 - **Per level** (`tests/level.mjs`): each level also completes on its own; every objective type, checkpoint, wave, hazard and the boss stages were exercised.
 - **Systems** (`tests/systems.mjs`):
   - Movement: the parapet can't be jumped, stairs don't bounce, walking up stairs works, and the ladder climbs onto the container stack.

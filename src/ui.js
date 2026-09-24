@@ -263,7 +263,7 @@ export class UI {
     $('#res-stars').innerHTML = stars(r.stars);
     const rec = levelRecord(def.num);
     const badges = [];
-    if (r.newBest) badges.push(t('res.best') + ' ' + t('res.new'));
+    if (r.newBest) badges.push(t('res.newBest'));
     if (r.noDamage) badges.push(t('ach.flawless'));
     if (r.campaignFirst) badges.push(t('res.endlessUnlocked'));
     $('#res-badges').innerHTML = badges.map((b) => `<span class="badge">${b}</span> `).join('');
