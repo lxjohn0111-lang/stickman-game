@@ -217,12 +217,14 @@ r = await page.evaluate(() => {
   P.weapon.mag = 1;
   P.damage(500, P.x + 3, P.z, 'test');
   const dead = !P.alive;
+  const clock = P.stats.time;
   g.restartCheckpoint();
   if (g.state === 'lockwait') g._enterPlaying();
-  return { alive0, got, dead, aliveAfter: g.enemies.alive, hp: P.health, loadoutSame: JSON.stringify(P.getLoadout()) === loadout, state: g.state, pos: [P.x, P.z].map((v) => +v.toFixed(1)), cp: [cp.x, cp.z] };
+  return { alive0, got, dead, clockKept: P.stats.time === clock && clock > 0, aliveAfter: g.enemies.alive, hp: P.health, loadoutSame: JSON.stringify(P.getLoadout()) === loadout, state: g.state, pos: [P.x, P.z].map((v) => +v.toFixed(1)), cp: [cp.x, cp.z] };
 });
 check('checkpoint activates when the area is calm', r.got === 0, r);
 check('checkpoint restore: full health, same loadout, enemies back', r.dead && r.hp === 100 && r.loadoutSame && r.aliveAfter === r.alive0 && r.state === 'playing', r);
+check('checkpoint restore keeps the level clock running', r.clockKept, r);
 
 // ---------------------------------------------------------------- style switch keeps everything
 r = await page.evaluate(() => {

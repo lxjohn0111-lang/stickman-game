@@ -392,6 +392,8 @@ export class Mission {
     const g = this.game;
     this.restoring = true;
     const s = snap;
+    // the level clock keeps running across deaths (reset() clears the stats)
+    const played = g.player.stats.time;
     g.bullets.reset();
     g.player.reset(s.pos, s.loadout);
     g.enemies.restore(s.enemies);
@@ -402,7 +404,7 @@ export class Mission {
     this.used = new Set(s.used);
     this.destroyed = new Set(s.destroyed);
     this.run = { ...s.run };
-    g.player.stats = { ...s.stats, time: g.player.stats.time, damageTaken: s.stats.damageTaken };
+    g.player.stats = { ...s.stats, time: played, damageTaken: s.stats.damageTaken };
     this.timers = s.timers.map((tm) => ({ ...tm, at: tm.at + g.time }));
     this.queue = [];
     this.surviveLeft = s.surviveLeft;

@@ -214,7 +214,7 @@ The results below come from headless Chromium with SwiftShader.
   - Health: regeneration waits 5 s and caps at 75 on Normal and 50 on Hard; kits give +35 up to 100 and aren't used at full health.
   - Guns: 1 and 2 switch slots, and picked-up and dropped guns keep their ammo.
   - The sniper's laser shows about 1.0 s before the shot; the heavy staggers, then resists.
-  - Checkpoints activate once it's calm and restore health, loadout and enemies.
+  - Checkpoints activate once it's calm and restore health, loadout and enemies; the level clock keeps running across the restore.
   - A mid-fight style switch leaves the snapshot identical.
   - Quality presets change only rendering.
   - The conveyor carries the player and stops when its control is shut down.
