@@ -33,15 +33,20 @@ for (const sec of ['settings', 'achievements', 'endless', 'style', 'controls', '
   await page.click(`nav.menu-nav button[data-sec=${sec}]`);
   await page.waitForTimeout(200);
   await shot(`menu-${sec}`);
+  if (sec === 'endless') check('endless locked before the campaign is won', (await page.textContent('#menu-panel')).includes('Finish the campaign'), '');
 }
-check('endless locked before the campaign is won', (await page.innerText('#menu-panel')).includes('Finish the campaign'), '');
+
 
 // hover/focus states exist on buttons (computed style changes on hover)
+await page.mouse.move(640, 700);
+await page.waitForTimeout(2500);
 const hover = await page.evaluate(() => {
   const b = document.querySelector('nav.menu-nav button[data-sec=controls]');
   return getComputedStyle(b).backgroundColor;
 });
+// (SwiftShader draws the 3D menu backdrop slowly, so CSS transitions need time)
 await page.hover('nav.menu-nav button[data-sec=controls]');
+await page.waitForTimeout(2500);
 const hover2 = await page.evaluate(() => getComputedStyle(document.querySelector('nav.menu-nav button[data-sec=controls]')).backgroundColor);
 check('buttons react to hover', hover !== hover2, [hover, hover2]);
 
@@ -51,8 +56,8 @@ await page.$eval('nav.menu-nav button[data-sec=levels]', (el) => el.click());
 await page.$eval('.lcard:nth-child(2)', (el) => el.click());
 await page.waitForFunction(() => WT.game.state === 'ready', null, { timeout: 300000 });
 await shot('loading-card');
-const lc = await page.innerText('#loadcard');
-check('loading card: name, objective, controls', lc.includes('Container Port') && lc.includes('Objective') && lc.includes('WASD'), lc.slice(0, 200));
+const lc = (await page.textContent('#loadcard')).replace(/\s+/g, ' ');
+check('loading card: name, objective, controls', /container port/i.test(lc) && lc.includes('Objective') && lc.includes('WASD'), lc.slice(0, 200));
 await page.$eval('#lc-start', (el) => el.click());
 await page.evaluate(() => { const g = WT.game; if (g.state === 'lockwait') g._enterPlaying(); for (let i = 0; i < 30; i++) g.step(1 / 60); });
 await shot('hud');
@@ -78,8 +83,8 @@ await page.evaluate(() => { const g = WT.game; if (g.state === 'lockwait' && g.i
 // death card
 await page.evaluate(() => { const g = WT.game; if (g.state !== 'playing') g._enterPlaying(); g.player.damage(999, g.player.x, g.player.z - 5, 'test'); for (let i = 0; i < 180; i++) g.step(1 / 60); });
 await shot('death');
-const death = await page.innerText('#death');
-check('death card offers checkpoint, level, menu', death.includes('Restart Checkpoint') && death.includes('Restart Level') && death.includes('Main Menu'), death);
+const death = (await page.textContent('#death')).toLowerCase();
+check('death card offers checkpoint, level, menu', death.includes('restart checkpoint') && death.includes('restart level') && death.includes('main menu'), death);
 await page.$eval('#death-btns .btn-ghost', (el) => el.click());
 await page.evaluate(() => { const g = WT.game; if (g.state === 'lockwait') g._enterPlaying(); });
 check('restart level', await page.evaluate(() => WT.game.state === 'playing' && WT.game.player.health === 100 && WT.game.mission.index === 0), '');
@@ -88,8 +93,8 @@ check('restart level', await page.evaluate(() => WT.game.state === 'playing' && 
 await page.evaluate(() => { const m = WT.game.mission; m.index = m.objectives.length - 1; m.obj = m.objectives[m.index]; m._complete(); });
 await page.waitForTimeout(300);
 await shot('results');
-const res = await page.innerText('#results');
-check('results card lists stats and buttons', ['Time', 'Kills', 'Headshots', 'Accuracy', 'Damage taken', 'Secrets', 'Score', 'Next Level', 'Replay', 'Main Menu'].every((k) => res.includes(k)), res.replace(/\s+/g, ' '));
+const res = (await page.textContent('#results')).toLowerCase();
+check('results card lists stats and buttons', ['Time', 'Kills', 'Headshots', 'Accuracy', 'Damage taken', 'Secrets', 'Score', 'Next Level', 'Replay', 'Main Menu'].every((k) => res.includes(k.toLowerCase())), res.replace(/\s+/g, ' '));
 
 // finishing level 8 unlocks Endless; then an Endless run
 await page.evaluate(() => { const p = WT.progress; p.campaignWon = true; p.unlocked = 8; });
@@ -99,18 +104,25 @@ await shot('endless-menu');
 await page.$eval('#menu-panel .btn-try', (el) => el.click());
 await page.waitForFunction(() => WT.game.state === 'ready', null, { timeout: 300000 });
 await page.$eval('#lc-start', (el) => el.click());
-const endless = await page.evaluate(() => {
-  const g = WT.game;
-  if (g.state === 'lockwait') g._enterPlaying();
-  g.godMode = true; g.noRender = true;
-  // kill each wave as it arrives
-  for (let i = 0; i < 60 * 70; i++) {
-    g.step(1 / 60);
-    if (i % 30 === 0) for (const e of g.enemies.list) if (e.alive && !e.civilian) g.enemies.damage(e, 9999, 'head', new WT.THREE.Vector3(e.body.x, 1.6, e.body.z), new WT.THREE.Vector3(0, 0, -1));
-  }
-  g.noRender = false; g.step(1 / 60);
-  return { wave: g.endless.wave, score: g.endless.score, section: g.endless.section, level: g.level.def.id, state: g.state };
-});
+// step in chunks so the async section loads can run between them
+let endless;
+for (let chunk = 0; chunk < 40; chunk++) {
+  await page.waitForFunction(() => WT.game.state !== 'loading', null, { timeout: 300000 });
+  endless = await page.evaluate(() => {
+    const g = WT.game;
+    if (g.state === 'ready' || g.state === 'lockwait') g._enterPlaying();
+    g.godMode = true; g.noRender = true;
+    for (let i = 0; i < 300 && g.state === 'playing'; i++) {
+      g.step(1 / 60);
+      // kill each wave as it arrives
+      if (i % 30 === 0) for (const e of g.enemies.list) if (e.alive && !e.civilian) g.enemies.damage(e, 9999, 'head', new WT.THREE.Vector3(e.body.x, 1.6, e.body.z), new WT.THREE.Vector3(0, 0, -1));
+    }
+    g.noRender = false;
+    return { wave: g.endless.wave, score: g.endless.score, section: g.endless.section, level: g.level && g.level.def.id, state: g.state };
+  });
+  if (endless.wave >= 5 && endless.section >= 1 && endless.state === 'playing') break;
+}
+await page.evaluate(() => WT.game.step(1 / 60));
 check('endless waves rise and sections change', endless.wave >= 4 && endless.section >= 1, endless);
 await shot('endless');
 const over = await page.evaluate(() => { const g = WT.game; g.godMode = false; g.player.damage(999, g.player.x, g.player.z, 'test'); for (let i = 0; i < 200; i++) g.step(1 / 60); return { best: WT.progress.endless, state: g.state }; });

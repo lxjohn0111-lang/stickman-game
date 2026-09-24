@@ -169,6 +169,7 @@ window.BOT2 = (() => {
     aimAt(n.x, p.cam.y + (n.y - p.y), n.z, 0.35);
     key('KeyW', true);
     for (const dr of g.doors) {
+      if (st.escape > 0) break;
       if (!dr.isOpen && !dr.locked && Math.abs(dr.y0 - p.y) < 1 && dr.distanceTo(p.x, p.z) < 1.4) { key('KeyF', true); break; }
     }
     if (st.lastPos && Math.hypot(st.lastPos[0] - p.x, st.lastPos[1] - p.z) < 0.01) {
@@ -183,6 +184,17 @@ window.BOT2 = (() => {
     } else st.stuck = 0;
     if (st.backoff > 0) { st.backoff--; key('KeyW', false); key('KeyS', true); key(st.backoff % 60 < 30 ? 'KeyA' : 'KeyD', true); }
     st.lastPos = [p.x, p.z];
+    // watchdog: no real progress for 12 s (wedged on a stair side, a door
+    // toggling back and forth) -> walk off in a random direction, re-plan
+    if (!st.anchor || Math.hypot(st.anchor[0] - p.x, st.anchor[1] - p.z) > 2 || Math.abs(st.anchor[2] - p.y) > 1) st.anchor = [p.x, p.z, p.y, g.time];
+    else if (g.time - st.anchor[3] > 12) { st.escape = 90; st.escYaw = Math.random() * Math.PI * 2; st.anchor = null; st.path = null; }
+    if (st.escape > 0) {
+      st.escape--;
+      const dyaw = Math.atan2(Math.sin(st.escYaw - p.yaw), Math.cos(st.escYaw - p.yaw));
+      g.input.dx += (-dyaw / (0.0021 * g.settings.sensitivity)) * 0.3;
+      key('KeyS', false); key('KeyF', false); key('KeyW', true);
+      if (st.escape % 30 === 0) key('Space', true);
+    }
   }
   return { st, step, goal, visibleEnemy };
 })();
