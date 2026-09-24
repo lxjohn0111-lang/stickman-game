@@ -386,7 +386,12 @@ export class Enemies {
       if (speed > 0.5 && e.moveSpeed < 0.25) {
         e.stuckT += dt;
         this._openBlockingDoor(e, desiredX, desiredZ);
-        if (e.stuckT > 1.2) { e.stuckT = 0; e.repathT = 0; e.strafeDir = -e.strafeDir; e.path = null; e.hop = null; }
+        if (e.stuckT > 0.8 && !e.closedDoor) {
+          // an open door leaf in the way: swing it shut and carry on
+          const dd = this.game.doors.find((d) => d.isOpen && Math.abs(d.y0 - b.y) < 1 && d.distanceTo(b.x, b.z) < 0.9);
+          if (dd) { dd.close(); e.closedDoor = true; }
+        }
+        if (e.stuckT > 1.2) { e.stuckT = 0; e.closedDoor = false; e.repathT = 0; e.strafeDir = -e.strafeDir; e.path = null; e.hop = null; }
       } else e.stuckT = 0;
       e.walkPhase += dt * Math.min(e.moveSpeed, 4) * 3.1 / e.k;
       this._footstep(e);

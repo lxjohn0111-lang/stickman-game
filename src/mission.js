@@ -43,6 +43,7 @@ export class Mission {
     this.destroyed = new Set();
     this.cpIndex = -1;
     this.checkpoint = null;
+    for (const c of this.data.checkpoints) c.armed = false;
     this.queue = [];
     this.timers = [];
     this.tipsShown = new Set();
@@ -339,6 +340,8 @@ export class Mission {
   }
 
   // ------------------------------------------------------------------ checkpoints
+  // A checkpoint arms when the player passes it and activates as soon as
+  // the fighting around the player has ended (while still nearby).
   _checkpoints() {
     const g = this.game;
     const P = g.player;
@@ -347,11 +350,13 @@ export class Mission {
     for (let i = this.cpIndex + 1; i < cps.length; i++) {
       const c = cps[i];
       if (this.index < c.need) continue;
-      if (Math.hypot(P.x - c.x, P.z - c.z) > c.r || Math.abs(P.y - c.y) > 2) continue;
-      // only once the fighting around here is over
+      const d = Math.hypot(P.x - c.x, P.z - c.z);
+      if (!c.armed && d < c.r && Math.abs(P.y - c.y) < 2.5) c.armed = true;
+      if (!c.armed || d > 40) continue;
       if (g.enemies.combatNear(P.x, P.y, P.z, 24) || this.queue.length) continue;
       this.cpIndex = i;
-      this.checkpoint = this._snapshot({ x: P.x, y: P.y, z: P.z, yaw: P.yaw });
+      for (let k = 0; k <= i; k++) cps[k].armed = false;
+      this.checkpoint = this._snapshot({ x: c.x, y: c.y, z: c.z, yaw: c.yaw });
       g.ui.checkpoint();
       g.audio.play('checkpoint', { gain: 0.7 });
       break;
@@ -402,6 +407,7 @@ export class Mission {
     this.queue = [];
     this.surviveLeft = s.surviveLeft;
     this.cpIndex = s.cpIndex;
+    for (const c of this.data.checkpoints) c.armed = false;
     this.tipsShown = new Set(s.tipsShown);
     this.index = s.index;
     this.obj = this.objectives[this.index] || null;

@@ -130,6 +130,12 @@ export class LevelKit {
           else b.boxMM('frame', fixed - 0.03, y0 + op.lo, m - 0.025, fixed + 0.03, y0 + op.hi, m + 0.025, { col: false });
         }
       }
+      // open gaps at floor level: a nav link straight through the wall
+      if (op.kind === 'gap' && op.lo < 0.3 && op.b - op.a > 0.8) {
+        const m = (op.a + op.b) / 2, off = t / 2 + 0.9;
+        if (axis === 'x') this.navChain([[m, y0, fixed - off], [m, y0, fixed + off]]);
+        else this.navChain([[fixed - off, y0, m], [fixed + off, y0, m]]);
+      }
       cur = op.b;
     }
     put(cur, a1, y0, y1);
@@ -172,6 +178,43 @@ export class LevelKit {
 
   sign(text, x, y, z, w, h, facing = 1, axis = 'z') {
     this.signQuads.push({ text, x, y, z, w, h, facing, axis });
+  }
+
+  // ------------------------------------------------------------------ layout helpers
+  // Invisible walls around the playable area.
+  bounds(x0, z0, x1, z1, h = 14) {
+    const t = 0.6;
+    this.collider(x0 - t, -2, z0 - t, x1 + t, h, z0, MOVE);
+    this.collider(x0 - t, -2, z1, x1 + t, h, z1 + t, MOVE);
+    this.collider(x0 - t, -2, z0, x0, h, z1, MOVE);
+    this.collider(x1, -2, z0, x1 + t, h, z1, MOVE);
+  }
+
+  // Visual ground slab (the collision ground is the infinite plane at y=0).
+  ground(role, x0, z0, x1, z1, y = 0, o = {}) {
+    if (y <= 0.001) this.deco(role, x0, y - 0.3, z0, x1, y, z1, { edges: false, ...o });
+    else this.box(role, x0, y - 0.3, z0, x1, y, z1, { edges: false, ...o });
+  }
+
+  // Door leaf in a wall opening. axis 'x': wall at z = fixed, leaf from a to
+  // a + w along X. axis 'z': wall at x = fixed, leaf along Z.
+  doorAt(axis, fixed, a, w = 0.95, y0 = 0, o = {}) {
+    if (axis === 'x') return this.door({ hx: a, hz: fixed, angle: 0, w, h: o.h || 2.08, y0, ...o });
+    return this.door({ hx: fixed, hz: a, angle: Math.PI / 2, w, h: o.h || 2.08, y0, ...o });
+  }
+
+  // Wall openings: a doorway and a window.
+  op(a, w = 1.0, hi = 2.12) { return { a, b: a + w, lo: 0, hi, kind: 'door' }; }
+  gap(a, w, hi = 3) { return { a, b: a + w, lo: 0, hi, kind: 'gap' }; }
+  win(a, w = 1.4, lo = 0.95, hi = 2.3) { return { a, b: a + w, lo, hi, kind: 'window' }; }
+  // Evenly spaced windows from a0 to a1 (skipping ranges in `skip`).
+  wins(a0, a1, w = 1.4, every = 3, lo = 0.95, hi = 2.3, skip = []) {
+    const out = [];
+    for (let a = a0; a + w <= a1 + 1e-6; a += every) {
+      if (skip.some(([s0, s1]) => a + w > s0 && a < s1)) continue;
+      out.push(this.win(a, w, lo, hi));
+    }
+    return out;
   }
 
   // ------------------------------------------------------------------ vertical movement
@@ -578,21 +621,21 @@ export class LevelKit {
     this.mapRect(x - hx, z - hz, x + hx, z + hz, 'cover');
   }
 
-  tableSet(x, z, { chairs = 4, role = 'table', chairRole = 'chair', w = 1.4, d = 0.9 } = {}) {
-    this.boxC(role, x, 0.745, z, w, 0.05, d, { col: false });
-    for (const [lx, lz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) this.boxC(role, x + lx * (w / 2 - 0.08), 0.36, z + lz * (d / 2 - 0.08), 0.06, 0.72, 0.06, { col: false });
-    this.collider(x - w / 2, 0, z - d / 2, x + w / 2, 0.77, z + d / 2, MOVE);
-    this.collider(x - w / 2, 0.69, z - d / 2, x + w / 2, 0.77, z + d / 2, BULLET);
+  tableSet(x, z, { chairs = 4, role = 'table', chairRole = 'chair', w = 1.4, d = 0.9, y = 0 } = {}) {
+    this.boxC(role, x, y + 0.745, z, w, 0.05, d, { col: false });
+    for (const [lx, lz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) this.boxC(role, x + lx * (w / 2 - 0.08), y + 0.36, z + lz * (d / 2 - 0.08), 0.06, 0.72, 0.06, { col: false });
+    this.collider(x - w / 2, y, z - d / 2, x + w / 2, y + 0.77, z + d / 2, MOVE);
+    this.collider(x - w / 2, y + 0.69, z - d / 2, x + w / 2, y + 0.77, z + d / 2, BULLET);
     const cs = [[0, -1], [0, 1], [-1, 0], [1, 0]].slice(0, chairs);
     for (const [sx, sz] of cs) {
       const cx = x + sx * (w / 2 + 0.3), cz = z + sz * (d / 2 + 0.3);
-      this.boxC(chairRole, cx, 0.45, cz, 0.42, 0.04, 0.42, { col: false });
+      this.boxC(chairRole, cx, y + 0.45, cz, 0.42, 0.04, 0.42, { col: false });
       const bx = cx + sx * 0.19, bz = cz + sz * 0.19;
-      this.boxC(chairRole, bx, 0.7, bz, sx ? 0.04 : 0.42, 0.46, sz ? 0.04 : 0.42, { col: false });
-      for (const [lx, lz] of [[-0.18, -0.18], [0.18, -0.18], [-0.18, 0.18], [0.18, 0.18]]) this.boxC(chairRole, cx + lx, 0.22, cz + lz, 0.035, 0.44, 0.035, { col: false });
-      this.collider(cx - 0.22, 0, cz - 0.22, cx + 0.22, 0.93, cz + 0.22, MOVE);
+      this.boxC(chairRole, bx, y + 0.7, bz, sx ? 0.04 : 0.42, 0.46, sz ? 0.04 : 0.42, { col: false });
+      for (const [lx, lz] of [[-0.18, -0.18], [0.18, -0.18], [-0.18, 0.18], [0.18, 0.18]]) this.boxC(chairRole, cx + lx, y + 0.22, cz + lz, 0.035, 0.44, 0.035, { col: false });
+      this.collider(cx - 0.22, y, cz - 0.22, cx + 0.22, y + 0.93, cz + 0.22, MOVE);
     }
-    this.mapRect(x - w / 2, z - d / 2, x + w / 2, z + d / 2, 'table');
+    if (y < 0.5) this.mapRect(x - w / 2, z - d / 2, x + w / 2, z + d / 2, 'table');
   }
 
   shelf(x0, z0, x1, z1, h = 1.8, y = 0) {

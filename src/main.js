@@ -738,6 +738,7 @@ class Game {
       this.hazards.update(dt);
     } else if (st === 'ready' && L) {
       this.player.applyCamera(settings);
+      this.vm.update(dt, { moving: 0, aim: false, sprint: false, lookDX: 0, lookDY: 0, bob: false });
       this.hazards.update(dt);
     }
     this.input.endFrame();

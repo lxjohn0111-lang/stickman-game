@@ -142,5 +142,5 @@ export const SCORE = {
 
 // Star thresholds on the pre-difficulty score (n = enemies in the level).
 export function starThresholds(n) {
-  return { two: n * 60 + 500, three: n * 90 + 900 };
+  return { two: n * 80 + 700, three: n * 130 + 1400 };
 }
