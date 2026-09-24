@@ -701,11 +701,18 @@ export class LevelKit {
   }
 
   // Slow press over a line: static frame + moving head with warning light.
-  press({ x0, z0, x1, z1, yTop = 3.2, yLow = 0.95, headH = 0.6, period = 5.2, phase = 0, floorY = null }) {
+  // posts: 'x' puts the frame posts at the -X/+X ends, 'z' at the -Z/+Z sides
+  // (use 'z' when a belt runs along X under the press).
+  press({ x0, z0, x1, z1, yTop = 3.2, yLow = 0.95, headH = 0.6, period = 5.2, phase = 0, floorY = null, posts = 'x' }) {
     const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
     const top = yTop + headH + 0.8;
-    for (const [px, pz] of [[x0 - 0.35, cz], [x1 + 0.35, cz]]) this.box('machine', px - 0.18, 0, pz - 0.4, px + 0.18, top, pz + 0.4);
-    this.box('machine', x0 - 0.55, top, cz - 0.45, x1 + 0.55, top + 0.4, cz + 0.45);
+    if (posts === 'z') {
+      for (const pz of [z0 - 0.35, z1 + 0.35]) this.box('machine', cx - 0.4, 0, pz - 0.18, cx + 0.4, top, pz + 0.18);
+      this.box('machine', cx - 0.45, top, z0 - 0.55, cx + 0.45, top + 0.4, z1 + 0.55);
+    } else {
+      for (const [px, pz] of [[x0 - 0.35, cz], [x1 + 0.35, cz]]) this.box('machine', px - 0.18, 0, pz - 0.4, px + 0.18, top, pz + 0.4);
+      this.box('machine', x0 - 0.55, top, cz - 0.45, x1 + 0.55, top + 0.4, cz + 0.45);
+    }
     // floor warning stripes
     const fy = floorY ?? yLow - 0.05;
     this.deco('hazard', x0, fy, z0, x1, fy + 0.008, z1);
@@ -719,7 +726,7 @@ export class LevelKit {
     pb.build(g, this.materials, { lineMaterial: this.materials.lines.main });
     this.group.add(g);
     const col = this.world.add(x0, yTop, z0, x1, yTop + headH, z1, SOLID, 'press', 'metal');
-    this.data.presses.push({ x0, z0, x1, z1, yTop, yLow, headH, period, phase, col, group: g, lx: x0 - 0.35, ly: top - 0.3, lz: cz + 0.45 });
+    this.data.presses.push({ x0, z0, x1, z1, yTop, yLow, headH, period, phase, col, group: g, lx: posts === 'z' ? cx + 0.45 : x0 - 0.35, ly: top - 0.3, lz: posts === 'z' ? z1 + 0.35 : cz + 0.45 });
   }
 
   // Lift platform between y0 and y1 (moved by script).
