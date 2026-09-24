@@ -1,0 +1,250 @@
+<title>Way Through</title>
+<style>
+  :root {
+    --ink: #111;
+    --paper: #fff;
+    --muted: #6b6b6b;
+    --panel: #fff;
+    --line: 1px solid #111;
+    --line-strong: 2px solid #111;
+    --shadow: none;
+    --btn: #fff;
+    --btn-ink: #111;
+    --btn-hover: #111;
+    --btn-hover-ink: #fff;
+    --accent: #111;
+    --accent-2: #111;
+    --accent-3: #111;
+    --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+    --sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    --title-font: var(--mono);
+    --radius: 0px;
+    --pill-bg: #fff;
+    --dot: #111;
+  }
+  body.style-neo {
+    --ink: #000;
+    --paper: #fffdf2;
+    --muted: #3b3b3b;
+    --panel: #fffdf2;
+    --line: 3px solid #000;
+    --line-strong: 3px solid #000;
+    --shadow: 6px 6px 0 #000;
+    --btn: #ffe600;
+    --btn-ink: #000;
+    --btn-hover: #ff5fa2;
+    --btn-hover-ink: #000;
+    --accent: #ffe600;
+    --accent-2: #ff5fa2;
+    --accent-3: #3de0ff;
+    --title-font: "Arial Black", "Helvetica Neue", Arial, sans-serif;
+    --radius: 0px;
+    --pill-bg: #ffe600;
+    --dot: #ffe600;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #fff; color: var(--ink); font-family: var(--mono); }
+  body.style-neo { background: #8fd8ff; }
+  canvas#game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  body.playing canvas#game { cursor: none; }
+  body.fallback-look.playing canvas#game { cursor: crosshair; }
+  .hidden { display: none !important; }
+  button { font: inherit; color: inherit; }
+
+  /* ---------------- HUD ---------------- */
+  #hud { position: fixed; inset: 0; pointer-events: none; }
+  #vignette { position: absolute; inset: 0; opacity: 0; background: radial-gradient(ellipse at center, rgba(0,0,0,0) 38%, rgba(20,0,0,.55) 70%, rgba(0,0,0,.92) 100%); transition: opacity .15s linear; }
+  .edge { position: absolute; opacity: 0; }
+  #edge-top { left: 0; right: 0; top: 0; height: 26%; background: linear-gradient(to bottom, rgba(0,0,0,.8), rgba(0,0,0,0)); }
+  #edge-bottom { left: 0; right: 0; bottom: 0; height: 26%; background: linear-gradient(to top, rgba(0,0,0,.8), rgba(0,0,0,0)); }
+  #edge-left { top: 0; bottom: 0; left: 0; width: 22%; background: linear-gradient(to right, rgba(0,0,0,.8), rgba(0,0,0,0)); }
+  #edge-right { top: 0; bottom: 0; right: 0; width: 22%; background: linear-gradient(to left, rgba(0,0,0,.8), rgba(0,0,0,0)); }
+  #crosshair { position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px 0 0 -2px; border-radius: 50%; background: var(--dot); box-shadow: 0 0 0 1px rgba(255,255,255,.9); }
+  body.style-neo #crosshair { width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; box-shadow: 0 0 0 2px #000; }
+  #hitmarker { position: absolute; left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; opacity: 0; }
+  #hitmarker::before, #hitmarker::after { content: ""; position: absolute; left: 50%; top: 0; width: 1.5px; height: 100%; margin-left: -.75px; background: linear-gradient(to bottom, #111 0 30%, transparent 30% 70%, #111 70% 100%); }
+  #hitmarker::before { transform: rotate(45deg); } #hitmarker::after { transform: rotate(-45deg); }
+  #hitmarker.head::before, #hitmarker.head::after { background: linear-gradient(to bottom, #7a0c0c 0 32%, transparent 32% 68%, #7a0c0c 68% 100%); }
+  body.style-neo #hitmarker::before, body.style-neo #hitmarker::after { width: 3px; margin-left: -1.5px; }
+  #prompt { position: absolute; left: 50%; top: 57%; transform: translateX(-50%); padding: 4px 11px 4px 5px; border: var(--line); border-radius: 999px; background: var(--pill-bg); font-size: 12px; letter-spacing: .04em; white-space: nowrap; box-shadow: var(--shadow); display: flex; align-items: center; gap: 7px; }
+  body.style-neo #prompt { box-shadow: 3px 3px 0 #000; font-family: var(--sans); font-weight: 800; }
+  #prompt kbd { display: inline-block; min-width: 18px; padding: 1px 5px; border: var(--line); border-radius: 999px; font: inherit; font-weight: 700; text-align: center; background: var(--paper); }
+  #prompt .bracket { font-weight: 700; }
+  #hitdir { position: absolute; left: 50%; top: 67%; transform: translateX(-50%); text-align: center; font-family: var(--mono); font-size: 11px; letter-spacing: .28em; text-transform: uppercase; opacity: 0; color: #111; text-shadow: 0 0 3px #fff, 0 0 6px #fff; }
+  #hitdir .rule { width: 120px; height: 1px; background: #111; margin: 0 auto 6px; box-shadow: 0 0 2px #fff; }
+  body.style-neo #hitdir { font-weight: 700; color: #000; text-shadow: none; background: #fff; border: 3px solid #000; padding: 4px 10px; box-shadow: 3px 3px 0 #000; }
+  body.style-neo #hitdir .rule { height: 3px; background: #ff2bd6; box-shadow: none; }
+  #ammo { position: absolute; right: 28px; bottom: 24px; font-family: var(--mono); font-size: 13px; text-align: right; letter-spacing: .06em; color: #111; text-shadow: 0 0 3px #fff; }
+  #ammo .mag { font-size: 22px; }
+  #ammo .wname { display: block; font-size: 10px; letter-spacing: .25em; text-transform: uppercase; color: var(--muted); }
+  body.style-neo #ammo { background: #fff; border: 3px solid #000; padding: 6px 10px; box-shadow: 4px 4px 0 #000; font-weight: 800; text-shadow: none; }
+  #fps { position: absolute; left: 10px; top: 8px; font-size: 11px; font-family: var(--mono); color: #111; text-shadow: 0 0 3px #fff; }
+  #area { position: absolute; left: 50%; top: 22px; transform: translateX(-50%); font-family: var(--mono); font-size: 11px; letter-spacing: .32em; text-transform: uppercase; opacity: 0; transition: opacity .6s; text-align: center; color: #111; text-shadow: 0 0 4px #fff; }
+  #area .rule { width: 60px; height: 1px; background: #111; margin: 0 auto 5px; }
+  body.style-neo #area { background: #fff; border: 3px solid #000; padding: 4px 10px; font-weight: 800; box-shadow: 3px 3px 0 #000; text-shadow: none; }
+  body.style-neo #area .rule { display: none; }
+  #toast { position: absolute; left: 50%; bottom: 16%; transform: translateX(-50%); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; opacity: 0; transition: opacity .3s; padding: 5px 12px; background: var(--panel); border: var(--line); box-shadow: var(--shadow); }
+  body.style-neo #toast { font-family: var(--sans); font-weight: 800; box-shadow: 3px 3px 0 #000; }
+  body.is-dead #crosshair, body.is-dead #prompt, body.is-dead #hitmarker, body.is-dead #ammo, body.is-dead #toast { display: none; }
+  #fade { position: fixed; inset: 0; pointer-events: none; opacity: 0; background: #d9d9d9; }
+
+  /* ---------------- screens ---------------- */
+  .screen { position: fixed; inset: 0; display: flex; }
+  #menu, #pause { align-items: stretch; justify-content: flex-start; padding: 5vh 5vw; gap: 3vw; }
+  #pause { background: rgba(255,255,255,.55); }
+  body.style-neo #pause { background: rgba(255,95,162,.25); }
+  .menu-left { display: flex; flex-direction: column; gap: 18px; min-width: 250px; max-width: 290px; }
+  .logo { padding: 6px 0 2px; }
+  .logo .sub { font-size: 11px; letter-spacing: .3em; text-transform: uppercase; color: var(--muted); margin-top: 2px; }
+  body.style-neo .logo { background: var(--panel); border: var(--line); box-shadow: var(--shadow); padding: 12px 14px 10px; }
+  nav.menu-nav { display: flex; flex-direction: column; gap: 6px; }
+  nav.menu-nav button { all: unset; cursor: pointer; font-family: var(--mono); font-size: 14px; letter-spacing: .22em; text-transform: uppercase; padding: 9px 12px; border: 1px solid transparent; background: rgba(255,255,255,.72); }
+  nav.menu-nav button:hover, nav.menu-nav button:focus-visible { border: var(--line); background: #fff; }
+  nav.menu-nav button.active { border: var(--line); background: #fff; box-shadow: inset 3px 0 0 #111; }
+  nav.menu-nav button.primary { background: #111; color: #fff; border: 3px double #fff; outline: 1px solid #111; }
+  nav.menu-nav button.primary:hover { background: #333; }
+  body.style-neo nav.menu-nav button { font-family: var(--sans); font-weight: 900; letter-spacing: .08em; border: var(--line); background: #fff; box-shadow: 4px 4px 0 #000; }
+  body.style-neo nav.menu-nav button:hover { background: var(--accent-3); transform: translate(-1px,-1px); box-shadow: 5px 5px 0 #000; }
+  body.style-neo nav.menu-nav button.active { background: var(--accent); box-shadow: 4px 4px 0 #000; }
+  body.style-neo nav.menu-nav button.primary { background: var(--accent-2); color: #000; outline: none; }
+  .panel { flex: 1; max-width: 720px; align-self: flex-start; max-height: 90vh; overflow: auto; background: var(--panel); border: var(--line); box-shadow: var(--shadow); padding: 22px 26px; font-size: 13px; line-height: 1.55; }
+  .panel h2 { margin: 0 0 14px; font-family: var(--mono); font-size: 12px; font-weight: 700; letter-spacing: .32em; text-transform: uppercase; border-bottom: var(--line); padding-bottom: 8px; }
+  body.style-neo .panel h2 { font-family: var(--title-font); font-size: 18px; letter-spacing: .05em; background: var(--accent); margin: -22px -26px 16px; padding: 12px 26px; border-bottom: var(--line); }
+  .panel p { margin: 0 0 10px; }
+  .panel .hint { color: var(--muted); font-size: 12px; }
+  table.keys { border-collapse: collapse; width: 100%; }
+  table.keys td { padding: 5px 8px; border-bottom: 1px dotted #999; vertical-align: top; }
+  table.keys td:first-child { white-space: nowrap; width: 38%; }
+  kbd.k { display: inline-block; padding: 1px 6px; border: var(--line); font: inherit; font-size: 11px; margin-right: 3px; background: #fff; }
+  body.style-neo kbd.k { box-shadow: 2px 2px 0 #000; border-width: 2px; font-weight: 800; }
+  .styles { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .style-card { all: unset; cursor: pointer; display: block; border: var(--line); background: #fff; box-shadow: var(--shadow); }
+  .style-card img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-bottom: var(--line); background: #eee; }
+  .style-card .t { padding: 8px 10px 2px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; font-size: 12px; }
+  .style-card .d { padding: 0 10px 10px; font-size: 11px; color: var(--muted); }
+  .style-card.selected { outline: 3px solid #111; outline-offset: 3px; }
+  body.style-neo .style-card.selected { outline: 4px solid #ff2bd6; }
+  .settings { display: grid; grid-template-columns: 1fr 1.2fr; gap: 10px 18px; align-items: center; }
+  .settings label { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
+  .settings .val { font-size: 11px; color: var(--muted); margin-left: 6px; }
+  .settings input[type=range] { width: 100%; accent-color: #111; }
+  body.style-neo .settings input[type=range] { accent-color: #ff2bd6; }
+  .seg { display: inline-flex; border: var(--line); }
+  .seg button { all: unset; cursor: pointer; padding: 3px 10px; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; border-right: var(--line); }
+  .seg button:last-child { border-right: none; }
+  .seg button.on { background: #111; color: #fff; }
+  body.style-neo .seg { box-shadow: 3px 3px 0 #000; }
+  body.style-neo .seg button { font-family: var(--sans); font-weight: 800; }
+  body.style-neo .seg button.on { background: var(--accent); color: #000; }
+  .mission { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .mission canvas { width: 100%; border: var(--line); background: #fff; }
+  .route { list-style: none; padding: 0; margin: 0; }
+  .route li { padding: 4px 0; border-bottom: 1px dotted #999; font-size: 12px; }
+  .route li.done { color: var(--muted); text-decoration: line-through; }
+  .route li.now { font-weight: 700; }
+
+  /* ---------------- cards ---------------- */
+  .card-screen { align-items: center; justify-content: center; }
+  .card { background: #fff; color: #111; border: 1px solid #111; padding: 30px 40px 26px; min-width: 360px; max-width: 92vw; text-align: center; box-shadow: 0 18px 60px rgba(0,0,0,.25); }
+  body.style-neo .card { border: 3px solid #000; box-shadow: 10px 10px 0 #000; background: var(--paper); }
+  .card .title { margin: 4px 0 18px; }
+  .btn-try { all: unset; cursor: pointer; display: inline-block; padding: 10px 30px; background: #111; color: #fff; font-family: var(--mono); font-size: 13px; letter-spacing: .28em; text-transform: uppercase; border: 3px double #fff; outline: 2px solid #111; }
+  .btn-try:hover, .btn-try:focus-visible { background: #2a2a2a; }
+  body.style-neo .btn-try { background: #ff5fa2; color: #000; border: 3px solid #000; outline: none; box-shadow: 5px 5px 0 #000; font-family: var(--sans); font-weight: 900; }
+  body.style-neo .btn-try:hover { background: #ffe600; }
+  .btn-ghost { all: unset; cursor: pointer; display: inline-block; padding: 8px 18px; border: var(--line); font-size: 12px; letter-spacing: .2em; text-transform: uppercase; margin-left: 10px; }
+  body.style-neo .btn-ghost { box-shadow: 4px 4px 0 #000; background: #fff; font-family: var(--sans); font-weight: 800; }
+  .links { margin-top: 18px; font-size: 12px; letter-spacing: .14em; }
+  .links a { color: inherit; text-decoration: none; border-bottom: 1px solid currentColor; cursor: pointer; }
+  .links .dot { margin: 0 8px; }
+  .stats { display: grid; grid-template-columns: auto auto; gap: 6px 26px; margin: 4px auto 22px; font-size: 13px; text-align: left; width: max-content; }
+  .stats dt { letter-spacing: .2em; text-transform: uppercase; color: var(--muted); font-size: 11px; align-self: center; }
+  .stats dd { margin: 0; font-weight: 700; text-align: right; }
+  #deathsub { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.35); }
+  #deathsub .panel { max-width: 640px; }
+  #clicklock { align-items: center; justify-content: center; cursor: pointer; background: rgba(255,255,255,.4); }
+  #clicklock .card { padding: 20px 30px; }
+  #clicklock .card p { margin: 6px 0 0; font-size: 12px; color: var(--muted); }
+  #loading { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: #fff; font-size: 12px; letter-spacing: .3em; text-transform: uppercase; }
+  #styletoast { position: fixed; left: 50%; top: 14%; transform: translateX(-50%); padding: 6px 14px; background: #fff; border: 1px solid #111; font-size: 12px; letter-spacing: .2em; text-transform: uppercase; opacity: 0; transition: opacity .3s; pointer-events: none; }
+  body.style-neo #styletoast { border: 3px solid #000; box-shadow: 4px 4px 0 #000; background: #ffe600; font-family: var(--sans); font-weight: 900; }
+
+  svg.hw { overflow: visible; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; display: inline-block; }
+  @keyframes hw-draw { to { stroke-dashoffset: 0; } }
+  @media (max-width: 760px) {
+    #menu, #pause { flex-direction: column; overflow: auto; }
+    .styles, .mission { grid-template-columns: 1fr; }
+  }
+</style>
+<canvas id="game"></canvas>
+
+<div id="hud" class="hidden">
+  <div id="vignette"></div>
+  <div id="edge-top" class="edge"></div>
+  <div id="edge-bottom" class="edge"></div>
+  <div id="edge-left" class="edge"></div>
+  <div id="edge-right" class="edge"></div>
+  <div id="crosshair"></div>
+  <div id="hitmarker"></div>
+  <div id="prompt" class="hidden"></div>
+  <div id="hitdir"><div class="rule"></div><span>HIT - AHEAD</span></div>
+  <div id="area"><div class="rule"></div><span></span></div>
+  <div id="ammo"><span class="mag">0</span> / <span class="res">0</span><span class="wname">SMG</span></div>
+  <div id="fps" class="hidden"></div>
+  <div id="toast"></div>
+</div>
+<div id="fade"></div>
+
+<div id="menu" class="screen hidden">
+  <div class="menu-left">
+    <div class="logo"><div class="logo-hw"></div><div class="sub">a stickman shooter</div></div>
+    <nav class="menu-nav">
+      <button data-go="play" class="primary">Play</button>
+      <button data-sec="style">Visual Style</button>
+      <button data-sec="controls">Controls</button>
+      <button data-sec="settings">Settings</button>
+      <button data-sec="howto">How to Play</button>
+      <button data-sec="credits">Credits</button>
+    </nav>
+  </div>
+  <div class="panel" id="menu-panel"></div>
+</div>
+
+<div id="pause" class="screen hidden">
+  <div class="menu-left">
+    <div class="logo"><div class="logo-hw"></div><div class="sub">paused</div></div>
+    <nav class="menu-nav">
+      <button data-go="resume" class="primary">Resume</button>
+      <button data-sec="style">Visual Style</button>
+      <button data-sec="settings">Settings</button>
+      <button data-sec="controls">Controls</button>
+      <button data-sec="mission">Mission</button>
+      <button data-go="restart">Restart</button>
+      <button data-go="mainmenu">Main menu</button>
+    </nav>
+  </div>
+  <div class="panel" id="pause-panel"></div>
+</div>
+
+<div id="death" class="screen card-screen hidden">
+  <div class="card">
+    <div class="title" id="death-title"></div>
+    <button class="btn-try" id="btn-try">Try again</button>
+    <div class="links"><a data-sub="mission">Mission</a><span class="dot">&middot;</span><a data-sub="controls">Controls</a><span class="dot">&middot;</span><a data-sub="settings">Settings</a></div>
+  </div>
+  <div id="deathsub" class="hidden"><div class="panel" id="deathsub-panel"></div></div>
+</div>
+
+<div id="win" class="screen card-screen hidden">
+  <div class="card">
+    <div class="title" id="win-title"></div>
+    <dl class="stats" id="win-stats"></dl>
+    <button class="btn-try" id="btn-again">Play again</button><button class="btn-ghost" id="btn-win-menu">Main menu</button>
+  </div>
+</div>
+
+<div id="clicklock" class="screen hidden"><div class="card"><strong>Click to resume</strong><p>The browser needs a click before it will capture the mouse again.</p></div></div>
+<div id="styletoast"></div>
+<div id="loading">Loading&hellip;</div>
+
+<script src="dist/game.js"></script>
