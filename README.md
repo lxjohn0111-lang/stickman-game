@@ -188,8 +188,16 @@ The results below come from headless Chromium with SwiftShader.
   - A mid-fight style switch leaves the snapshot identical.
   - Quality presets change only rendering.
   - The conveyor carries the player and stops when its control is shut down.
+- **UI** (`tests/ui.mjs`), all passing:
+  - Level Select shows 8 cards with previews, stars, bests and locks, and Continue picks the next level.
+  - Endless stays locked until the campaign is won.
+  - Buttons react to hover.
+  - The loading card, the health bar (with its trailing segment, hit direction and red low-health state), pause on focus loss, the death card, Restart Level and the results card all work.
+  - Endless waves rise, sections change, the run ends on death and saves the best wave.
+  - Every handwritten title has all its letters, and there are no page errors.
+- **Qualities** (`tests/qualities.mjs`): all eight levels loaded and played for 12 s with the autopilot at Low, Medium and High, with no errors. Colliders, nav graph, spawns and pickups were identical at every preset; only the pixel ratio (0.75 / 1.25 / 2, capped by the display) and the shadow map (1024 / 1536 / 2048) changed, along with outline and particle detail.
 - **Pointer lock** (`tests/lock.mjs`): lock on Start, Esc → pause, a refused re-lock → "Click to resume", and a sandboxed iframe → mouse-move fallback.
-- **Performance:** about 45 to 145 draw calls per level (Classic is lower; Neo adds the shadow pass), everything instanced or merged per material role.
+- **Performance:** about 50 to 125 draw calls per level in Classic (from the quality run; Neo adds a shadow pass), everything instanced or merged per material role.
 
 ## What comes from the briefs, and what is my own
 
