@@ -3,5 +3,6 @@ import northgate from './northgate.js';
 import port from './port.js';
 import metro from './metro.js';
 import desert from './desert.js';
+import hotel from './hotel.js';
 
-export const LEVELS = [northgate, port, metro, desert];
+export const LEVELS = [northgate, port, metro, desert, hotel];

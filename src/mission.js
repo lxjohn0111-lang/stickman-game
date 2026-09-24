@@ -54,7 +54,7 @@ export class Mission {
     this.totalEnemies = this.data.spawns.filter((s) => s.role !== 'civilian').length;
     this.lastObjectiveT = 0;
     g.enemies.clear();
-    if (!endless) g.enemies.spawnGroup(this.data.spawns, 'main');
+    if (!endless) for (const grp of this.def.startGroups || ['main']) g.enemies.spawnGroup(this.data.spawns, grp);
     g.items.load(this.data, g.diff.pickupTier, new Set(), endless ? [true, true, true] : this.secretsFound);
     if (!endless) this._next();
     // restarting the level is restoring this snapshot (no rebuild needed)
