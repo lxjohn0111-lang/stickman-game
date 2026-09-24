@@ -1,34 +1,23 @@
 # Way Through
 
-A first-person 3D stickman shooter that runs in the browser. You start on a rooftop, fight down through a stair room, kitchen and canteen, cross a fenced yard past the water tower, and walk out through the North Gate.
+A first-person stickman shooter campaign for the browser: eight levels, three difficulties, Endless Mode, and two visual styles you can switch at any moment. It is built for web portals like CrazyGames: it's playable within two clicks, keyboard and mouse come first, it pauses on focus loss, and it saves progress in localStorage.
 
-Everything is built at load time. The geometry is boxes, cylinders and cones outlined with screen-space ink lines, every texture is drawn on a canvas, and every sound is synthesised with the Web Audio API. There are no image, model or audio files.
+Everything is built at load time. The geometry is boxes, cylinders and cones outlined with screen-space ink lines, every texture is drawn on a canvas, and every sound and both music loops are synthesised with the Web Audio API. There are no image, model or audio files.
 
 ## Launch
 
-**Offline, no install:** double-click `index.html`. It loads one classic script, `dist/game.js`, which is committed, so it works straight from `file://`.
+| How | What to open |
+| --- | --- |
+| Offline, one file | `waythrough.html`, which has the game script inlined. Double-click it; nothing else is needed. |
+| Offline, from the repo | `index.html`, which loads `dist/game.js` (committed). Keep the `dist/` folder next to it. If the script can't load, the page says so after a few seconds instead of loading forever. |
+| Local server | `node server.js` → http://localhost:8080 (`node server.js 3000` for another port) |
 
-**Local server (optional):**
-
-```sh
-node server.js          # http://localhost:8080
-node server.js 3000     # any port
-```
-
-**Rebuild the bundle** after editing `src/`:
+Rebuild after editing `src/`:
 
 ```sh
 npm install             # esbuild only; three.js is vendored in vendor/three
-npm run build           # -> dist/game.js (minified IIFE)
-npm run watch           # rebuild on change
-node build.mjs --dev    # unminified with inline source maps
-```
-
-**Browser tests** use Playwright with Chromium, and a copy of Playwright must be installed:
-
-```sh
-npm test                # mechanics, weapons, pointer lock, full playthroughs (both styles)
-node tests/playthrough.mjs normal neo   # one autopilot run: difficulty, style
+npm run build           # dist/game.js + waythrough.html + artifact/index.html
+npm run watch           # rebuild dist/game.js on change
 ```
 
 ## Controls
@@ -36,105 +25,175 @@ node tests/playthrough.mjs normal neo   # one autopilot run: difficulty, style
 | Key | Action |
 | --- | --- |
 | W A S D | Move |
-| Mouse | Look (pointer lock, falls back to plain mouse-move look) |
-| Left click | Fire (hold for SMG and rifle) |
+| Mouse | Look (pointer lock, with a plain mouse-move fallback where lock is unavailable) |
+| Left click | Fire (hold for automatic weapons; the burst rifle fires 3 rounds per click) |
 | Right click | Steady aim (hold) |
-| Space | Jump |
+| 1 / 2, Q, mouse wheel | Main weapon / sidearm |
+| R | Reload (you can't fire until the magazine is in) |
+| F | Doors, switches and consoles; swap guns; take ammo from the same gun |
+| Space | Jump; let go of a ladder |
 | Shift | Sprint |
 | C or Left Ctrl | Crouch (hold) |
-| F | Open or close doors, swap guns, take ammo |
-| R | Reload |
-| V | Toggle visual style (Classic or Neobrutalist) |
+| W / S at a ladder | Climb up / down |
+| V | Toggle visual style (Classic / Neobrutalist) |
 | Esc | Pause |
+
+## The campaign
+
+| # | Level | Objective | Landmark | Final encounter |
+| --- | --- | --- | --- | --- |
+| 1 | North Gate | Off the roof, through kitchen and canteen, across the yard, out through the gate. This is the original map, unchanged; a tutorial overlay and tips teach the controls. | Water tower | Defenders at the water tower and gate on several heights; a reinforcement wave through the gate |
+| 2 | Container Port (sunset) | Cross the container yard to the warehouse, reach the harbour control room, open the security gate | Gantry crane, cargo ship | Riflemen on container roofs and a heavy at the control room; a wave through the opened gate |
+| 3 | Underground Station | Restore power in two electrical rooms, then reach the maintenance exit | Walk-through train | After the power returns: attacks from both platforms and inside the train |
+| 4 | Desert Outpost (dust) | Destroy three radio transmitters, then escape through the vehicle checkpoint | Transmitter masts, watchtowers | Watchtower sniper, riflemen behind barriers, advancers in the trenches, plus a wave from the flanks |
+| 5 | Mountain Hotel (snow) | Get into the lobby, clear the upper floor, free the trapped civilian, open the courtyard exit | Frozen courtyard pond | Balconies above the courtyard and a squad in the lobby |
+| 6 | Industrial Factory | Shut down three production controls, call the freight elevator, hold until it arrives | Furnaces, chimneys | 45 s defence around the still-running transfer belt, with reinforcements through four doors |
+| 7 | Rainy City Block (night) | Cross the district to the parking garage and reach its roof | Neon main street, garage | Hold the extraction zone for 90 s against four waves, then board the helicopter |
+| 8 | Island Fortress | Reach the courtyard, disable the alarm, enter the command tower, defeat the commander | Command tower | A commander who falls back to the roof with a shotgun, then to the first floor with an SMG, calling a wave each time. Winning unlocks Endless Mode and shows campaign totals |
+
+Level 8 brings back pieces of earlier levels: port containers on the dock, the desert watchtower and sandbags, the North Gate water tower, and a tiled tunnel from the station.
+
+A first run takes about 45 to 60 minutes, and each level about 5 to 10 minutes. Every level has 2 to 3 checkpoints, 3 secrets, health kits, ammo and several weapons to try.
+
+### Progression and saving
+
+- **Play / Continue** starts the latest unlocked level. **Level Select** shows a preview rendered from the level itself, plus name, best score, best time, stars and secrets. Levels unlock in order, and finished levels can be replayed.
+- **Easy / Normal / Hard** change enemy health, accuracy, reaction time, damage, the number of optional pickups and how far health regenerates (100 / 75 / 50). They never change the layout.
+- **Saved in localStorage** (`waythrough.save.v2`, `waythrough.settings.v1`, `waythrough.style`): unlocked levels, last level, per-level best score, time, stars and secrets, achievements, Endless records, campaign totals, settings and style.
+- **Loading card:** level name, place, objective and a control reminder, with a progress bar while the level builds in stages. Then "Click to start".
+- **Results card:** time, kills, headshots, accuracy, damage taken, secrets and score, with the stars awarded and **Next Level / Replay / Main Menu** buttons.
+- **Death card:** **Restart Checkpoint / Restart Level / Main Menu**.
+
+### Scoring
+
+Kills are worth 100 and headshots add 50. Each kill multiplies by a combo: +10% per kill without taking damage, up to ×2. The final score adds accuracy × 1000, 4 points per second under par, 5 per remaining health point and 250 per secret, all scaled by difficulty (×0.8 / 1 / 1.3). Stars are 1 for finishing, then 2 or 3 for reaching `enemies × 80 + 700` or `enemies × 130 + 1400` points before the difficulty scaling. Three stars are reachable without perfect play.
+
+**Achievements:** Way Through (finish all levels), Explorer (find all 24 secrets), Untouched (finish a level without damage), Hard Way Through (finish every level on Hard).
+
+**Endless Mode** unlocks when you finish the campaign. It shuffles sections of the campaign maps, three waves per section, with bigger and tougher waves each time. It ends on death and saves your best wave and score.
+
+## Gameplay systems
+
+- **Health:** a bar at the lower left reading "76 / 100". It is green, turns yellow below 50, and turns red and pulses below 25, with a delayed trailing segment when you take damage. A dashed mark shows the regeneration limit. Regeneration starts after 5 s without damage, at 8 hp/s, up to 100 / 75 / 50 depending on difficulty. Health kits give +35, never above 100, and are left on the floor if you're at full health. "HIT - AHEAD / LEFT / RIGHT / BEHIND" still appears and the matching screen edge flashes dark red. The Classic bar is white with a black ink outline; the Neo bar has a 3 px border, a hard shadow and bright colours. Switching style never touches health.
+- **Weapons:** SMG, pump shotgun, AK rifle, burst rifle (main); pistol, auto pistol, revolver (sidearm). Each has its own silhouette, recoil, fire rate, spread, reload and sound. You carry one of each. Guns dropped by you or by enemies keep their ammo, and walking over a gun you already carry takes its ammo. The ammo panel sits beside the health bar with both slots and a reload bar.
+- **Enemies** keep the stickman silhouette:
+  - **Pistol:** low health, fast, accurate single shots.
+  - **SMG:** aggressive short bursts that keep pushing.
+  - **Rifle:** medium and long range, and changes cover after firing, looking for spots that are low-blocked but open at head height.
+  - **Shotgun:** closes the distance and is dangerous up close.
+  - **Heavy:** 1.2× size, slow, lots of health, with a visible armour vest where hits spark and do less damage. It staggers after repeated hits, then shrugs hits off for 3.4 s so it can't be stun-locked.
+  - **Sniper:** a thin red laser tracks you for about 0.8 s, freezes for the last 0.25 s, then fires, so moving dodges it.
+  - **Commander:** a boss.
+  - **Civilians:** grey (Classic) or blue (Neo), with their hands up.
+- **Enemy spawns:** reinforcements come in only through doors, gates, stairways or distant entries that you can't see and that aren't behind you.
+- **Checkpoints** arm when you pass them and activate once the fighting near you has ended, with a "CHECKPOINT" notice. Restoring one gives you full health, the weapons and ammo you had there, and the enemies that were still alive then (at their posts). It also restores objective state, pickups, doors, hazards and level state such as power, alarms and the helicopter. Cleared encounters never respawn.
+- **Level machinery:**
+  - Conveyor belts carry the player, enemies and dropped guns.
+  - Steam vents and presses warn with a light, a sound and puffs before they can hurt, and are never unavoidable.
+  - The freight elevator descends during the hold-out.
+  - Ladders.
+  - Destructible transmitters.
+  - Flickering station lights until the power comes back.
+  - Glass that cracks and tinkles when shot.
+- **Weather and surfaces:**
+  - Rain with reflection streaks under the street lamps.
+  - Snow with footprints that fade after about 6 s.
+  - Desert dust that thins the distance but always leaves the area around the crosshair clear.
+  - An echo in the station.
+  - Footsteps that change with the surface: roof, indoor, metal, snow and outdoor.
+
+## Web-portal UX
+
+- **Two clicks** to play: Play, then Start on the loading card (which is also the click pointer lock needs).
+- On Level 1 a **controls overlay** stays up until you move or fire.
+- **Auto-pause** when the tab or window loses focus. Resuming waits for a click and a successful pointer lock; if the browser refuses, a "Click to resume" card appears.
+- **Localisation:** every player-facing string lives in `src/i18n.js`, so adding a language is one more table.
+- **Audio:** master, music and effects volume, with music quieter by default. No sound or music plays before the first click. There is a procedural menu theme, plus a separate low-intensity combat loop that comes in while enemies fight you and fades out after.
+- **Fullscreen** toggle.
+- **Quality:** Low, Medium or High changes resolution, shadow-map size, particle and decal counts and outline width, never gameplay. If the frame rate stays below 40 fps for 10 s, a hint suggests a lower setting; the game never changes it for you.
+- **Loading:** levels load in stages over several frames with a progress bar. Geometry, per-level textures, enemies, pickups, effects and loops are disposed or reset between levels.
+- **Buttons** have hover, active and focus states in both styles, and screens fade in quickly.
 
 ## Project layout
 
 ```
-index.html            HUD/menu markup and CSS for both styles; loads dist/game.js
-server.js             tiny static file server
-build.mjs             esbuild: src/main.js + vendored three -> dist/game.js (IIFE)
-vendor/three/         three.js r170 build + the line/geometry addons used (MIT)
+index.html              markup + CSS for both styles; boot watchdog; loads dist/game.js
+waythrough.html         generated: the same page with the script inlined
+artifact/index.html     generated: page body for the hosted preview
+build.mjs               esbuild bundle + the two generated pages
+server.js               tiny static file server
+vendor/three/           three.js r170 + the line/geometry addons used (MIT)
 src/
-  main.js             game states, loop, style switching, previews, sun/shadows
-  level.js            the whole map, colliders, doors, nav graph, enemy spawns, minimap data
-  builder.js          primitive builder: merges static geometry per material role, one ink-line mesh
-  materials.js        one shared material per role + Classic/Neo palettes (recoloured in place)
-  world.js            AABB collision grid, raycasts, doors, character controller
-  nav.js              waypoint graph + A*
-  doors.js            hinged doors that swing away from whoever opens them
-  player.js           movement, look, firing, reload, interaction, health, death camera
-  viewmodel.js        first-person guns/forearms, recoil spring, muzzle-flash strokes
-  guns.js             SMG / pump shotgun / AK rifle / pistol models (boxes + cylinders)
-  bullets.js          converging player tracers, slow enemy teardrops, near-miss whiz
-  enemies.js          instanced stickmen, AI state machine, hearing, Verlet ragdolls, pickups
-  fx.js               instanced decals, blood pools, debris/blood particles, enemy flashes
-  audio.js            synthesised sounds pre-rendered with OfflineAudioContext
-  input.js            keyboard/mouse, defensive pointer-lock handling
-  ui.js               HUD, menus, cards, settings, minimap
-  handwriting.js      single-stroke SVG "hand" lettering for the titles
-  textures.js         canvas textures (ink splats, sky gradient, clouds, toon ramp)
-tests/                Playwright harness, autopilot bot and checks
+  main.js               game states, level loading/disposal, environment per level, quality, previews, music
+  levelkit.js           level-building kit: walls with doors/windows, rooms, stairs, ramps, ladders, catwalks,
+                        containers, fences, props, conveyors, vents, presses, lifts, data (spawns, zones,
+                        checkpoints, secrets, pickups, interactables), staged finalize + nav linking
+  levels/               northgate (L1), port, metro, desert, hotel, factory, city, fortress, index.js
+  mission.js            objectives, scripted actions, waves, checkpoints, scoring, stars, achievements, saving
+  endless.js            Endless Mode
+  player.js             movement, ladders, conveyors, two weapon slots, reload, burst fire, pickups, health
+  enemies.js            roles, AI, sniper laser, heavy stagger, commander stages, civilians, ragdolls, instancing
+  items.js              pickups: guns (shared instanced gun meshes), health kits, ammo boxes, secret stars
+  hazards.js            conveyors, steam vents, presses, lifts, panels, destructibles, lamp flicker
+  env.js                rain, snow + footprints, dust, wet-street reflections
+  ui.js                 HUD, menus, Level Select, cards, settings, minimap
+  i18n.js               all player-facing text
+  save.js / settings.js localStorage progress and settings
+  audio.js              synthesised sounds, music loops, ambience beds, echo send
+  world.js nav.js doors.js builder.js materials.js textures.js fx.js bullets.js guns.js viewmodel.js input.js
+tests/                  Playwright harness, objective bot and test suites
 ```
 
-## About the footage
+## Tests
 
-**The gameplay footage was not attached in this session.** As the brief allows, I built the game from the written spec alone. So I could not do the "study it frame by frame at 60 fps", "measure fire rates from the gunshot peaks in the audio" or "compare each area side by side" steps. Instead:
+The browser tests need Playwright with Chromium; SwiftShader WebGL is fine.
 
-- Fire rates are the brief's measured values: SMG 0.09 s per shot, rifle 0.125 s. The weapons test fires each gun for 2 s and measures a mean interval of 0.089 s for the SMG and 0.124 s for the rifle at 60 fps.
-- Each area was checked against the spec's descriptions from in-game screenshots taken during automated playthroughs, in both styles.
-
-The list below separates what the brief states (the brief was written from the footage) from what I inferred or invented.
-
-### Reproduced from the brief (footage-derived)
-
-- **Look:** unlit white surfaces with about 1.2 px black ink edges on every primitive, fading into fog. Glass has 3 to 4 short diagonal hatch strokes. Solid black stickmen have a big round head (radius 0.165 m), thick limbs and one white eye with a pupil. Blood is dark red. Bullet hits leave black ink splats with droplets and flying debris.
-- **Map and route:** flat roof with a 1.05 m parapet, AC units and vents, and a stair hut whose door opens onto the roof. Then a straight 20-step stair (0.25 m rise, 0.4 m run) with rails on both sides, down into a room with a window on the far wall, two lockers on the right and a side door on the left. Then a kitchen with a serving counter, trays and an enemy behind the counter. Then a canteen with 12 tables in rows plus chairs, windows, EXIT signs over two exit doors, and vending machines. Then a fenced yard: chain-link fences with diamond lattice that block movement but not bullets, gable-roofed barracks, 7-sided cone pines, lamp posts, overhead cables, a lattice water tower on a concrete pad, a guard tower with a sniper, jersey barriers and crates. Last, the North Gate beyond the water tower; walking through it wins.
-- **Weapons:** boxy Uzi-style SMG (big rear block, grip holding the magazine, twin sight posts) at 0.09 s per shot. Pump shotgun with 8 pellets and a ribbed pump that animates after every shot. AK-style rifle at 0.125 s with a fork front sight and curved magazine. Semi-auto pistol. Guns are held low on the right, muzzle just below-right of the crosshair, with forearms rising from the bottom of the screen. Each shot kicks the gun up and back, and a spring returns it in about 5 frames. The camera pitch kicks up and partly recovers. The muzzle flash is 8 to 10 radiating ink strokes for 2 frames. Player tracers have a thin tail and a round head and converge from the muzzle onto the crosshair line. Enemy bullets are slow, fat teardrops with a whiz on near misses.
-- **Enemies:** about 15 (16 placed). They go from idle or patrol, to building awareness while they see you, to combat (face, aim, burst fire, strafe), to chasing your last known position with waypoint A* and opening doors themselves, to searching. They hear gunfire, which carries less through walls, and alert nearby enemies. When hit, both arms fly up and blood sprays onto the wall behind. On death: Verlet ragdoll collapse, a growing blood pool, and the gun drops as a pickup ("F Swap Rifle", or take its ammo if it is the same gun). Headshots do 2.5× damage.
-- **Player and HUD:** WASD, pointer-lock look, jump, sprint, crouch, F, R, right-click steady aim. Doors swing away and stop bullets, with "[F] Open" / "[F] Close" pills. Health regenerates with no health bar; the screen edges darken with damage. "HIT - AHEAD / LEFT / RIGHT / BEHIND" appears in small monospace capitals under a rule while that screen edge flashes darker. Tiny dot crosshair and an optional ammo readout.
-- **Death and win:** the gun drops away, the camera falls and rolls up toward the sky, and the screen fades light grey → grey → charcoal. Then a card with handwritten "No way through.", a black double-bordered "Try again" button, and Mission · Controls · Settings links. The win card reads "Way through." with time, kills, headshots, accuracy, score and best score.
-- **Two styles, switchable live:** materials are shared per role and recoloured in place, never rebuilt, and the choice is saved in localStorage. In Classic each role's emissive is set to its own colour. Neobrutalist has pink walls, a cyan roof, mint floors, orange tables, blue chairs and violet steel, with 3 px outlines, 2-step toon shading and hard sun shadows. The roof casts none. It adds a gradient sky with outlined clouds, black stickmen with a white rim and yellow eye, yellow player tracers, magenta enemy tracers, a yellow-orange starburst flash, and UI with 3 px borders and hard offset shadows.
-- **Menus:** main menu over a slow orbit of the live scene with Play, Visual Style (previews rendered from the game), Controls, Settings (all the listed options), How to Play and Credits. Pause menu with Resume, Visual Style, Settings, Controls, Mission (with minimap), Restart and Main menu. V toggles the style.
-- **Pitfalls handled:** step-up only while grounded; vertical collisions only against surfaces crossed this step; stair ground-snap; every door verified to open onto walkable floor; pointer lock requested in the click handler, with a "click to resume" pause when a re-lock is refused and a mouse-move fallback; merged static geometry and instancing.
-
-### Inferred or invented (not in the brief)
-
-- **Exact layout and sizes:** building footprint 37 × 18 m with the roof at 5 m, room sizes, prop positions, where the doors and windows are, a 62 × 82 m yard with an inner fence that has a central gap, three barracks, and the gate position.
-- **Enemy roster:** placement, patrol routes and weapon mix. Six guards "hold" their post (the counter shotgunner, yard riflemen and gate guards) so fights spread along the route instead of converging on the canteen.
-- **Numbers:** all damage, health, spread, speed and awareness values. That includes jump height 0.84 m (below the parapet), enemy health 80, player health 100, regen after 4 s, and enemy bullet speeds of 29 to 37 m/s (62 m/s for the sniper).
-- **Round shapes:** the brief says boxes, cylinders and cones, but a "big round head" needs a sphere. Spheres are also used for joints, tracer heads and teardrop heads. Muzzle starbursts are pinched cylinders.
-- **Classic flash fill:** in Classic the flash fill is white, so only the black strokes show. Enemy flashes are small black starbursts.
-- **Enemy tells:** the enemy "alert" sound, and a "suspicious" state that turns toward you while awareness builds.
-- **Extra feedback:** a hit-marker, area name captions, and toasts such as "+48 SMG ammo" and "Style: Neobrutalist".
-- **Prompts:** "Take … ammo" wording for same-gun pickups, and the keycap styling of the pills.
-- **Handwriting:** the handwritten lettering is my own single-stroke SVG "font", so it looks the same without web fonts.
-- **Sound design:** every synthesis recipe, plus ambient wind and footsteps.
-- **Scoring:** kills, headshots, accuracy and a time bonus, multiplied by difficulty.
-- **Rooftop shadows in Neo:** rooftop props stop casting shadows while you are inside the building. Their shadows would otherwise fall through the non-casting roof into the rooms.
-- **Three difficulties:** Easy, Normal and Hard, which scale damage, spread, reaction time, awareness and bullet speed.
+```sh
+npm test                          # systems, pointer lock, UI flows, full campaign
+node tests/systems.mjs            # movement, weapons, health, slots, enemies, checkpoints, styles, quality
+node tests/campaign.mjs           # all 8 levels in sequence through the menus on Normal
+node tests/level.mjs 5 --god      # one level with the objective bot
+node tests/ui.mjs                 # menus, Level Select, cards, Endless
+node tests/views.mjs 3 "x,y,z,yaw,pitch"   # screenshots of a spot in both styles
+```
 
 ## Verification
 
-All checks run in headless Chromium (SwiftShader WebGL) through Playwright:
+The results below come from headless Chromium with SwiftShader.
 
-- `tests/playthrough.mjs`: an autopilot that drives the real input state (keys, mouse deltas, clicks, F) through roof → stair → kitchen → canteen → yard → North Gate. It won on Normal in both styles (about 70 to 80 s of game time, 15 of 16 kills, no deaths in the final runs) and saved a screenshot per area.
-- `tests/mechanics.mjs`:
-  - repeated jumps can't mantle the parapet (the peak foot height stays below its top);
-  - walking down the 20 steps leaves the ground for 0 frames, and walking back up works;
-  - jumping beside or spawning inside crates never teleports you on top;
-  - all five doors open onto floor with a clear swing on both sides, swing away from the player and block bullets;
-  - the snapshot is byte-identical after switching style mid-fight and back (position, health, ammo, enemies, ragdolls, decals, pools, doors);
-  - hit-direction text, regen, the death card and restart all work.
-- `tests/weapons.mjs`:
-  - measured cadence is 0.089 s for the SMG and 0.124 s for the rifle;
-  - the shotgun fires 8 pellets and the pump animates and sounds;
-  - the pistol is semi-auto;
-  - every shot's sound starts on the same frame as its muzzle flash;
-  - the recoil spring has returned by frame 5, and the camera kick partly recovers.
-- `tests/lock.mjs`: lock on Play, locked mouse look, Esc/unlock → pause, refused re-lock → "Click to resume" → re-lock, and a sandboxed iframe (no pointer lock) → mouse-move fallback.
-- Draw calls, as shown by the FPS counter: about 50 to 75 in Classic and about 95 to 115 in Neobrutalist, where the shadow pass adds roughly 40.
+- **Campaign** (`tests/campaign.mjs`): an autopilot that follows each objective and drives the real input state played all eight levels in sequence on Normal, starting from the menu's Play button with no god mode. It died and pressed **Restart Checkpoint** on the death card when it had to. It switched style twice in the middle of fights on every level, and took the results card's **Next Level** each time. After Level 3 the browser was closed and relaunched on the same profile: progress was still there, and Continue went on to Level 4. The campaign-complete card and achievements appeared at the end.
+- **Per level** (`tests/level.mjs`): each level also completes on its own; every objective type, checkpoint, wave, hazard and the boss stages were exercised.
+- **Systems** (`tests/systems.mjs`):
+  - Movement: the parapet can't be jumped, stairs don't bounce, walking up stairs works, and the ladder climbs onto the container stack.
+  - Weapon cadence: SMG 0.09 s, rifle 0.125 s, the burst rifle fires 3-round bursts, the shotgun fires 8 pellets, and the pistol and revolver are semi-auto.
+  - Every shot's sound starts on the same frame as its muzzle flash.
+  - You can't fire during a reload.
+  - Health: regeneration waits 5 s and caps at 75 on Normal and 50 on Hard; kits give +35 up to 100 and aren't used at full health.
+  - Guns: 1 and 2 switch slots, and picked-up and dropped guns keep their ammo.
+  - The sniper's laser shows about 1.0 s before the shot; the heavy staggers, then resists.
+  - Checkpoints activate once it's calm and restore health, loadout and enemies.
+  - A mid-fight style switch leaves the snapshot identical.
+  - Quality presets change only rendering.
+  - The conveyor carries the player and stops when its control is shut down.
+- **Pointer lock** (`tests/lock.mjs`): lock on Start, Esc → pause, a refused re-lock → "Click to resume", and a sandboxed iframe → mouse-move fallback.
+- **Performance:** about 45 to 145 draw calls per level (Classic is lower; Neo adds the shadow pass), everything instanced or merged per material role.
+
+## What comes from the briefs, and what is my own
+
+The original brief (Level 1, weapons, look, AI, the two styles) was written from gameplay footage that wasn't attached. That map, the SMG/rifle cadences, the enemy and death-card behaviour and the Classic/Neo looks follow that brief exactly; Level 1's geometry is the original, unchanged.
+
+For the expansion, the level list, objectives and the requirements above come from the expansion brief. These are my own choices:
+
+- all eight layouts beyond Level 1, and every number: health, damage, speeds, par times, score values and star thresholds;
+- the three new guns' models and sounds;
+- the music;
+- the commander's positions;
+- how "trenches" are built (sandbag-walled channels, since the ground is a flat plane);
+- the Classic health bar's darker green/yellow/red with a dark-red trailing segment, which reconciles "dark-red fill" with the colour thresholds;
+- the synthesised helicopter;
+- Endless as three-wave sections.
 
 ## Credits
 
 - three.js r170 (MIT), vendored in `vendor/three/`.
-- Everything else is in this repository.
+- Everything else, including code, geometry, textures, sound and music, is in this repository.

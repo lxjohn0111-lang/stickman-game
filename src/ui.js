@@ -387,7 +387,7 @@ export class UI {
       c.appendChild(wrap);
       const info = el('div', 'info');
       info.appendChild(el('div', 'nm', t(def.id + '.name')));
-      if (locked) info.appendChild(el('div', 'row', `<span>${t('levels.locked')}</span><span>${t('levels.lockedHint', { n: n - 1 })}</span>`));
+      if (locked) info.appendChild(el('div', 'row', `<span>&#128274; ${t('levels.lockedHint', { n: n - 1 })}</span>`));
       else {
         info.appendChild(el('div', 'row', `<span class="stars">${stars(rec ? rec.stars : 0)}</span><span>&#9734; ${rec ? rec.secrets.filter(Boolean).length : 0}/3</span>`));
         info.appendChild(el('div', 'row', `<span>${t('levels.best')} ${rec && rec.bestScore ? rec.bestScore : t('levels.none')}</span><span>${t('levels.time')} ${rec && rec.bestTime ? fmtTime(rec.bestTime) : t('levels.none')}</span>`));

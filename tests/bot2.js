@@ -52,7 +52,8 @@ window.BOT2 = (() => {
         if (dd < bd) { bd = dd; best = n; }
       }
       if (best && o.type === 'survive') return { x: (z.x0 + z.x1) / 2, y: best.y, z: (z.z0 + z.z1) / 2, snap: best };
-      return best ? { x: best.x, y: best.y, z: best.z } : null;
+      if (best) return { x: best.x, y: best.y, z: best.z };
+      return m.hasMarker ? { x: m.marker.x, y: m.marker.y - 1, z: m.marker.z - (o.final ? 2 : 0) } : null;
     }
     if (o.type === 'interact') {
       const it = o.ids.map((id) => d.interacts.find((i) => i.id === id)).find((i) => i && !m.used.has(i.id));
