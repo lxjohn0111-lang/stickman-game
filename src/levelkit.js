@@ -885,11 +885,10 @@ function buildSigns(quads, materials) {
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = 4;
+  // The sign material is shared (so styles recolour it); each level's text
+  // atlas is swapped in just before its signs are drawn.
   const mat = materials.get('signText');
-  if (mat.map) mat.map.dispose();
-  mat.map = tex;
-  mat.alphaTest = 0.4;
-  mat.needsUpdate = true;
+  if (!mat.map) { mat.map = tex; mat.alphaTest = 0.4; mat.needsUpdate = true; }
   const geoms = [];
   for (const q of quads) {
     const i = texts.indexOf(q.text);
@@ -926,6 +925,8 @@ function buildSigns(quads, materials) {
   out.setIndex(new THREE.BufferAttribute(idx, 1));
   const mesh = new THREE.Mesh(out, mat);
   mesh.name = 'signs';
+  mesh.userData.tex = tex;
+  mesh.onBeforeRender = () => { mat.map = tex; };
   return mesh;
 }
 
@@ -933,6 +934,7 @@ function buildSigns(quads, materials) {
 export function disposeGroup(group) {
   group.traverse((o) => {
     if (o.geometry) o.geometry.dispose();
+    if (o.userData && o.userData.tex) o.userData.tex.dispose();
   });
   if (group.parent) group.parent.remove(group);
 }

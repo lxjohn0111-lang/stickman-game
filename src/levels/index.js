@@ -5,5 +5,6 @@ import metro from './metro.js';
 import desert from './desert.js';
 import hotel from './hotel.js';
 import factory from './factory.js';
+import city from './city.js';
 
-export const LEVELS = [northgate, port, metro, desert, hotel, factory];
+export const LEVELS = [northgate, port, metro, desert, hotel, factory, city];

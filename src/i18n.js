@@ -321,6 +321,7 @@ const en = {
   'L7.o2': 'Reach the garage roof',
   'L7.o3': 'Defend the extraction zone',
   'L7.o4': 'Board the helicopter',
+  'L7.heli': 'The helicopter is here: get aboard',
   'area.L7.street': 'Main street',
   'area.L7.alley': 'Alley',
   'area.L7.garage': 'Parking garage',
