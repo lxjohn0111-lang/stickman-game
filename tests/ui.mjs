@@ -37,16 +37,15 @@ for (const sec of ['settings', 'achievements', 'endless', 'style', 'controls', '
 }
 
 
-// hover/focus states exist on buttons (computed style changes on hover)
+// hover/focus states exist on buttons (computed style changes on hover).
+// SwiftShader draws the 3D menu backdrop slowly, so transitions are switched
+// off for this check and the hover state is read directly.
+await page.addStyleTag({ content: 'nav.menu-nav button { transition: none !important; }' });
 await page.mouse.move(640, 700);
-await page.waitForTimeout(2500);
-const hover = await page.evaluate(() => {
-  const b = document.querySelector('nav.menu-nav button[data-sec=controls]');
-  return getComputedStyle(b).backgroundColor;
-});
-// (SwiftShader draws the 3D menu backdrop slowly, so CSS transitions need time)
+await page.waitForFunction(() => !document.querySelector('nav.menu-nav button[data-sec=controls]').matches(':hover'), null, { timeout: 60000 });
+const hover = await page.evaluate(() => getComputedStyle(document.querySelector('nav.menu-nav button[data-sec=controls]')).backgroundColor);
 await page.hover('nav.menu-nav button[data-sec=controls]');
-await page.waitForTimeout(2500);
+await page.waitForFunction(() => document.querySelector('nav.menu-nav button[data-sec=controls]').matches(':hover'), null, { timeout: 60000 });
 const hover2 = await page.evaluate(() => getComputedStyle(document.querySelector('nav.menu-nav button[data-sec=controls]')).backgroundColor);
 check('buttons react to hover', hover !== hover2, [hover, hover2]);
 
