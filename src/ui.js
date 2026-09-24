@@ -31,7 +31,6 @@ const AREA_ORDER = ['roof', 'stairs', 'kitchen', 'canteen', 'yard', 'gate'];
 
 export function areaAt(x, y, z) {
   if (z > 0 && x > -34 && x < 3) {
-    if (y > 4.6 && z > 14.2 - 0.1 && Math.abs(x) < 1.1 && z < 15.8) return 'roof';
     if (y > 4.9) return 'roof';
     if (x > -3) return 'stairs';
     if (x > -12) return 'kitchen';
@@ -451,10 +450,8 @@ export class UI {
     // FPS
     this.fpsAcc += realDt; this.fpsN++; this.fpsT += realDt;
     if (this.fpsT > 0.5) {
-      const info = g.renderer.info.render;
       this.fps.textContent = `${Math.round(this.fpsN / this.fpsAcc)} fps  ${g.drawCalls} draws`;
       this.fpsAcc = 0; this.fpsN = 0; this.fpsT = 0;
-      void info;
     }
     this.fps.classList.toggle('hidden', !s.fps);
     // damage vignette (no health bar)

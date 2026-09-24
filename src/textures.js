@@ -168,7 +168,9 @@ export function makeSkyTexture(top, mid, horizon, below) {
 
 // 2-step toon ramp for MeshToonMaterial.
 export function makeToonRamp() {
-  const data = new Uint8Array([150, 150, 150, 255, 255, 255, 255, 255]);
+  // dark step = no direct sun (ambient only), so faces turned away from the
+  // sun never pick up self-shadowing acne
+  const data = new Uint8Array([0, 0, 0, 255, 255, 255, 255, 255]);
   const tex = new THREE.DataTexture(data, 2, 1, THREE.RGBAFormat);
   tex.minFilter = THREE.NearestFilter;
   tex.magFilter = THREE.NearestFilter;

@@ -51,6 +51,7 @@ export class Player {
     this.sprinting = false;
     this.moving = 0;
     this.dryClicked = false;
+    this.pumpSoundT = 0;
     this.shotId = 0;
     this.shotHits = new Set();
     this.stats = { shots: 0, hits: 0, kills: 0, headshots: 0, time: 0 };
@@ -197,6 +198,10 @@ export class Player {
     const w = this.weapon;
     const def = w.def;
     this.fireCd -= dt;
+    if (this.pumpSoundT > 0) {
+      this.pumpSoundT -= dt;
+      if (this.pumpSoundT <= 0 && w.id === 'shotgun') g.audio.play('pump', { gain: 0.7 });
+    }
     // reload
     if (input.hit('KeyR')) this.startReload();
     if (this.reloading) {
@@ -301,7 +306,7 @@ export class Player {
     this.shake = Math.max(this.shake, def.id === 'shotgun' ? 0.6 : 0.15);
     if (def.id === 'shotgun') {
       g.vm.pump();
-      setTimeout(() => { if (this.alive && this.weapon.id === 'shotgun') g.audio.play('pump', { gain: 0.7 }); }, 110);
+      this.pumpSoundT = 0.11;
     }
     g.onPlayerShot();
   }

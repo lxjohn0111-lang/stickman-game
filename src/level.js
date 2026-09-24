@@ -28,7 +28,11 @@ function rng(seed) {
 }
 
 export function buildLevel(scene, materials, world) {
-  const b = new StaticBuilder(world);
+  let b = new StaticBuilder(world);
+  const mainB = b;
+  // Rooftop props get their own meshes so their shadows can be switched off
+  // while the player is indoors (the roof itself never casts).
+  const roofB = new StaticBuilder(world);
   const doors = [];
   const map = { rects: [], circles: [], lines: [] };
   const signQuads = [];
@@ -161,6 +165,7 @@ export function buildLevel(scene, materials, world) {
   for (const [x, z] of [[BX0, BZ0], [BX1, BZ0], [BX0, BZ1], [BX1, BZ1], [-0.8, 9.2], [0.8, 9.2]]) b.line(x, CEIL, z, x, RY, z);
 
   // parapet (1.05 m: higher than the 0.84 m jump apex)
+  b = roofB;
   const PY1 = RY + PARAPET;
   b.boxMM('parapet', BX0, RY, BZ0, BX1, PY1, BZ0 + EXT);
   b.boxMM('parapet', BX0, RY, BZ1 - EXT, BX1, PY1, BZ1);
@@ -217,6 +222,7 @@ export function buildLevel(scene, materials, world) {
   b.collider(-32.45, RY, 1.35, -32.15, RY + 3.2, 1.65);
   // roof drains / edge details: small boxes near parapet
   for (const x of [-30, -20, -10]) b.box('ink', x, RY + 0.02, BZ0 + EXT + 0.15, 0.3, 0.04, 0.2, { col: false });
+  b = mainB;
 
   // ------------------------------------------------------------ 2. stair + locker room
   // 20 steps, 0.25 m rise, 0.4 m run, descending north from the hut landing.
@@ -724,6 +730,11 @@ export function buildLevel(scene, materials, world) {
 
   // ------------------------------------------------------------ finalize geometry
   const built = b.buildStatic(scene, materials);
+  const roofGroup = new THREE.Group();
+  roofGroup.name = 'roof-props';
+  const roofBuilt = roofB.buildStatic(roofGroup, materials);
+  for (const m of roofBuilt.meshes) m.userData.cast = m.castShadow;
+  scene.add(roofGroup);
   const signMesh = buildSigns(signQuads, materials);
   scene.add(signMesh);
 
@@ -770,21 +781,21 @@ export function buildLevel(scene, materials, world) {
   const N = 0, S = Math.PI, E = -Math.PI / 2, W = Math.PI / 2;
   const spawns = [
     { x: -17, y: RY, z: 2.6, yaw: N, weapon: 'pistol', area: 'roof' },
-    { x: -6, y: RY, z: 16.4, yaw: W, weapon: 'smg', area: 'roof', patrol: [[-6, 16.4], [-21, 16.4], [-21, 9], [-6, 16.4]] },
+    { x: -19, y: RY, z: 16.4, yaw: E, weapon: 'smg', area: 'roof', patrol: [[-6, 16.4], [-21, 16.4], [-21, 9], [-6, 16.4]] },
     { x: 0.9, y: 0, z: 1.3, yaw: N, weapon: 'pistol', area: 'stairs' },
-    { x: -10.3, y: 0, z: 4.4, yaw: E, weapon: 'shotgun', area: 'kitchen' },
+    { x: -10.3, y: 0, z: 4.4, yaw: E, weapon: 'shotgun', area: 'kitchen', hold: true },
     { x: -19.5, y: 0, z: 7.2, yaw: E, weapon: 'rifle', area: 'canteen' },
     { x: -27.5, y: 0, z: 11.8, yaw: E, weapon: 'smg', area: 'canteen', patrol: [[-27.5, 11.8], [-15, 11.8]] },
     { x: -31.2, y: 0, z: 2.8, yaw: S, weapon: 'pistol', area: 'canteen' },
     { x: -22, y: 0, z: -10, yaw: S, weapon: 'smg', area: 'yard', patrol: [[-22, -10], [-9, -7], [-22, -10], [-30, -14]] },
-    { x: -6.5, y: 0, z: -23.5, yaw: S, weapon: 'rifle', area: 'yard' },
-    { x: -30, y: 0, z: -41, yaw: E, weapon: 'shotgun', area: 'yard' },
+    { x: -6.5, y: 0, z: -23.5, yaw: S, weapon: 'rifle', area: 'yard', hold: true },
+    { x: -30, y: 0, z: -41, yaw: E, weapon: 'shotgun', area: 'yard', hold: true },
     { x: TX, y: TW, z: TZ, yaw: S, weapon: 'rifle', area: 'yard', sniper: true },
     { x: -12, y: 0, z: -47, yaw: S, weapon: 'smg', area: 'yard', patrol: [[-12, -47], [-4.5, -49], [-7, -64], [-21, -64], [-22, -48]] },
-    { x: -5.5, y: 0, z: -65.5, yaw: S, weapon: 'rifle', area: 'yard' },
+    { x: -5.5, y: 0, z: -65.5, yaw: S, weapon: 'rifle', area: 'yard', hold: true },
     { x: -24, y: 0, z: -68, yaw: E, weapon: 'smg', area: 'yard', patrol: [[-24, -68], [-30, -60], [-24, -68], [-16, -70]] },
-    { x: -19.8, y: 0, z: -79.5, yaw: S, weapon: 'rifle', area: 'gate' },
-    { x: -9.2, y: 0, z: -79.8, yaw: S, weapon: 'shotgun', area: 'gate' },
+    { x: -19.8, y: 0, z: -79.5, yaw: S, weapon: 'rifle', area: 'gate', hold: true },
+    { x: -9.2, y: 0, z: -79.8, yaw: S, weapon: 'shotgun', area: 'gate', hold: true },
   ];
 
   // route through the level (for the Mission map)
@@ -801,7 +812,7 @@ export function buildLevel(scene, materials, world) {
     { x: -14.5, z: -84, label: '6', name: 'North Gate' },
   ];
 
-  return { built, doors, nav, spawns, map, route, water: V(WX, 12, WZ), bounds: { x0: YX0, x1: YX1, z0: YZ1, z1: BZ1 } };
+  return { built, roofProps: roofBuilt.meshes, doors, nav, spawns, map, route, water: V(WX, 12, WZ), bounds: { x0: YX0, x1: YX1, z0: YZ1, z1: BZ1 } };
 }
 
 // Text quads for EXIT / NORTH GATE, drawn from one canvas atlas.

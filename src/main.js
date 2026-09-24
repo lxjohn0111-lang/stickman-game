@@ -56,8 +56,8 @@ class Game {
     this.sun.shadow.camera.left = -38; this.sun.shadow.camera.right = 38;
     this.sun.shadow.camera.top = 38; this.sun.shadow.camera.bottom = -38;
     this.sun.shadow.camera.near = 1; this.sun.shadow.camera.far = 140;
-    this.sun.shadow.bias = -0.0006;
-    this.sun.shadow.normalBias = 0.03;
+    this.sun.shadow.bias = -0.0012;
+    this.sun.shadow.normalBias = 0.07;
     this.scene.add(this.hemi, this.sun, this.sun.target);
     this.skyNeo = makeSkyTexture('#3aa8ff', '#77ccff', '#ffe0f0', '#ffd6ea');
     this.white = new THREE.Color(0xffffff);
@@ -204,8 +204,8 @@ class Game {
     this.scene.fog.near = neo ? 70 : 28;
     this.scene.fog.far = neo ? 300 : 150;
     this.sun.castShadow = neo;
-    this.sun.intensity = neo ? Math.PI * 0.62 : 0;
-    this.hemi.intensity = neo ? Math.PI * 0.62 : 0;
+    this.sun.intensity = neo ? Math.PI * 0.42 : 0;
+    this.hemi.intensity = neo ? Math.PI * 0.76 : 0;
     this.vm.sun.intensity = neo ? Math.PI * 0.5 : 0;
     this.vm.ambient.intensity = neo ? Math.PI * 0.72 : 0;
     this.ui.setStyle(style);
@@ -301,6 +301,7 @@ class Game {
 
   toMainMenu() {
     this.state = 'menu';
+    document.body.classList.remove('is-dead');
     this.input.capture = false;
     this.input.exitLock();
     this.ui.setFade(0);
@@ -405,6 +406,10 @@ class Game {
 
   _updateSun() {
     if (!this.sun.castShadow) return;
+    // rooftop props don't cast into the building while you're inside it
+    const p = this.player;
+    const inside = this.state !== 'menu' && p.y < 4.6 && p.x > -34 && p.x < 3 && p.z > 0 && p.z < 18;
+    for (const m of this.level.roofProps) m.castShadow = !inside && m.userData.cast !== false;
     const c = this.state === 'menu' ? new THREE.Vector3(-14, 0, -26) : this.camera.position;
     const texel = 76 / this.sun.shadow.mapSize.x;
     const tx = Math.round(c.x / texel) * texel, tz = Math.round(c.z / texel) * texel;

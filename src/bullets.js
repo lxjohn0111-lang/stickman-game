@@ -221,7 +221,7 @@ export class Bullets {
       if (e >= MAX_ET) break;
       _v.set(b.vx, b.vy, b.vz).normalize();
       _q.setFromUnitVectors(UP, _v);
-      _m.compose(_a.set(b.x, b.y, b.z), _q, _s.set(0.05, 0.05, 0.05));
+      _m.compose(_a.set(b.x, b.y, b.z), _q, _s.set(0.06, 0.06, 0.06));
       this.etHead.setMatrixAt(e, _m);
       const tl = Math.min(1.4, (4 - b.life) * b.speed);
       _b.set(b.x - _v.x * (tl / 2 + 0.12), b.y - _v.y * (tl / 2 + 0.12), b.z - _v.z * (tl / 2 + 0.12));

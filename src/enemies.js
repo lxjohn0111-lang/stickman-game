@@ -25,7 +25,7 @@ const HIDE = new THREE.Matrix4().makeScale(0, 0, 0);
 const GUN_IDS = ['smg', 'shotgun', 'rifle', 'pistol'];
 
 const rand = (a, b) => a + Math.random() * (b - a);
-const angDiff = (a, b) => { let d = b - a; while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2; return d; };
+const angDiff = (a, b) => { const d = b - a; return Math.atan2(Math.sin(d), Math.cos(d)); };
 
 // joint indices (shared by pose + ragdoll)
 const J = { head: 0, neck: 1, pelvis: 2, sl: 3, el: 4, hl: 5, sr: 6, er: 7, hr: 8, hipl: 9, kl: 10, fl: 11, hipr: 12, kr: 13, fr: 14, chest: 15 };
@@ -222,7 +222,7 @@ export class Enemies {
             if (e.sees) { this._enterCombat(e, true); break; }
             e.repathT -= dt;
             if (e.repathT <= 0 || !e.path) this._pathTo(e, e.lastKnown);
-            [desiredX, desiredZ, speed] = this._followPath(e, ENEMY.run, dt);
+            [desiredX, desiredZ, speed] = this._followPath(e, e.investigate ? ENEMY.walk * 1.4 : ENEMY.run, dt);
             const dl = Math.hypot(e.body.x - e.lastKnown.x, e.body.z - e.lastKnown.z);
             if (dl < 1.3 || (!e.path && !e.goal)) this._startSearch(e);
             break;
@@ -280,6 +280,7 @@ export class Enemies {
 
   _enterCombat(e, fromChase = false) {
     const g = this.game;
+    e.investigate = false;
     const wasCombat = e.state === 'combat';
     e.state = 'combat';
     e.awareness = 1;
@@ -312,10 +313,18 @@ export class Enemies {
   }
 
   // Something told this enemy where the player is (gunfire, a shout).
-  alert(e, x, y, z) {
+  alert(e, x, y, z, urgent = true) {
     if (!e.alive || e.state === 'combat') return;
     e.lastKnown.set(x, y, z);
     e.awareness = 1;
+    e.investigate = !urgent;
+    if (e.spawn.hold && Math.hypot(x - e.spawn.x, z - e.spawn.z) > 12) {
+      // guards keep their post: get suspicious and look around it
+      e.lastKnown.set(e.spawn.x, e.spawn.y, e.spawn.z);
+      this._startSearch(e);
+      e.awareness = 0.8;
+      return;
+    }
     if (e.sniper) { e.state = 'combat'; e.reactT = rand(0.6, 1.0) * this.game.diff.react; e.burstCd = e.reactT; return; }
     e.state = 'chase';
     e.repathT = 0;
@@ -332,7 +341,8 @@ export class Enemies {
       const clear = w.clear(e.body.x, e.body.y + 1.6, e.body.z, x, y, z, SIGHT);
       // through walls it carries less, through a floor/roof much less
       const walled = Math.abs(e.body.y + 1.6 - y) > 2.6 ? ENEMY.hearRangeWalled * 0.5 : ENEMY.hearRangeWalled;
-      if (clear || d < walled) this.alert(e, this.game.player.x, this.game.player.y, this.game.player.z);
+      // close by they come running; further away they walk over to investigate
+      if (clear || d < walled) this.alert(e, this.game.player.x, this.game.player.y, this.game.player.z, d < 20);
     }
   }
 
@@ -393,6 +403,11 @@ export class Enemies {
     }
     // lost sight -> chase last known position
     if (!e.sees && g.time - e.lastSeen > ENEMY.loseSightTime && !e.sniper) {
+      if (e.spawn.hold && Math.hypot(e.lastKnown.x - e.spawn.x, e.lastKnown.z - e.spawn.z) > 12) {
+        e.lastKnown.set(e.spawn.x, e.spawn.y, e.spawn.z);
+        this._startSearch(e);
+        return [0, 0, 0];
+      }
       e.state = 'chase';
       e.repathT = 0;
       e.path = null;
@@ -410,7 +425,8 @@ export class Enemies {
     const nx = dxp * inv, nz = dzp * inv;
     let vx = -nz * e.strafeDir * ENEMY.strafe, vz = nx * e.strafeDir * ENEMY.strafe;
     const pref = e.weapon === 'shotgun' ? [3, 9] : e.weapon === 'rifle' ? [7, 24] : [4, 15];
-    if (!e.sees || distP > pref[1]) {
+    const leashed = e.spawn.hold && Math.hypot(e.body.x - e.spawn.x, e.body.z - e.spawn.z) > 7;
+    if ((!e.sees || distP > pref[1]) && !leashed) {
       // move up toward the player along the nav graph
       e.repathT -= dt;
       if (e.repathT <= 0 || !e.path) this._pathTo(e, e.lastKnown);
@@ -581,7 +597,8 @@ export class Enemies {
     if ((!e.path || e.pathIdx >= e.path.length) && !e.goal) {
       // pick a random nearby waypoint around the last known position
       const nav = this.game.nav;
-      const near = nav.nodes.filter((n) => Math.abs(n.y - e.lastKnown.y) < 1 && Math.hypot(n.x - e.lastKnown.x, n.z - e.lastKnown.z) < 9);
+      const R = e.spawn.hold ? 5 : 9;
+      const near = nav.nodes.filter((n) => Math.abs(n.y - e.lastKnown.y) < 1 && Math.hypot(n.x - e.lastKnown.x, n.z - e.lastKnown.z) < R);
       if (near.length) {
         const n = near[Math.floor(Math.random() * near.length)];
         this._pathTo(e, new THREE.Vector3(n.x, n.y, n.z));

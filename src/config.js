@@ -35,7 +35,7 @@ export const ENEMY = {
   sniperRange: 95,
   fovCos: Math.cos((62 * Math.PI) / 180),
   combatFovCos: Math.cos((110 * Math.PI) / 180),
-  hearRange: 42,
+  hearRange: 34,
   hearRangeWalled: 11,
   alertRange: 17,
   alertRangeWalled: 9,

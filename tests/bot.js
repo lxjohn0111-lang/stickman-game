@@ -42,7 +42,7 @@ window.BOT = (() => {
     const dx = x - cam.x, dy = y - cam.y, dz = z - cam.z;
     const yaw = Math.atan2(-dx, -dz);
     const pitch = Math.atan2(dy, Math.hypot(dx, dz));
-    let dyaw = yaw - p.yaw; while (dyaw > Math.PI) dyaw -= 2 * Math.PI; while (dyaw < -Math.PI) dyaw += 2 * Math.PI;
+    const dyaw = Math.atan2(Math.sin(yaw - p.yaw), Math.cos(yaw - p.yaw));
     // feed it through the mouse-look path, like a player would
     const sens = 0.0021 * g.settings.sensitivity * (p.aiming ? 0.7 : 1);
     const k = Math.min(1, rate);
@@ -73,7 +73,8 @@ window.BOT = (() => {
     // take better guns / ammo lying nearby
     if (p.lookTarget && p.lookTarget.kind === 'pickup') {
       const pk = p.lookTarget.pickup;
-      if (pk.weapon === p.weapon.id || (pk.weapon === 'rifle' && p.weapon.id !== 'rifle')) key('KeyF', true);
+      const low = p.weapon.mag + p.weapon.reserve < 24;
+      if (pk.weapon === p.weapon.id || (low && pk.mag + pk.reserve > p.weapon.mag + p.weapon.reserve)) key('KeyF', true);
     }
     const goal = goals[st.goal];
     if (!goal) return;
@@ -98,11 +99,12 @@ window.BOT = (() => {
     for (const dr of g.doors) {
       if (!dr.isOpen && Math.abs(dr.y0 - p.y) < 1 && dr.distanceTo(p.x, p.z) < 1.4) { key('KeyF', true); break; }
     }
-    // stuck?
+    // stuck on a corner? back up to the previous waypoint, then carry on
     if (st.lastPos && Math.hypot(st.lastPos[0] - p.x, st.lastPos[1] - p.z) < 0.01) {
       st.stuck++;
-      if (st.stuck > 40) { key(st.stuck % 80 < 40 ? 'KeyA' : 'KeyD', true); st.repath = 0; }
+      if (st.stuck > 25) { st.idx = Math.max(0, st.idx - 1); st.stuck = 0; st.backoff = 30; }
     } else st.stuck = 0;
+    if (st.backoff > 0) { st.backoff--; key('KeyW', false); key('KeyS', true); key(st.backoff % 60 < 30 ? 'KeyA' : 'KeyD', true); }
     st.lastPos = [p.x, p.z];
   }
   return { st, step, goals, visibleEnemy };
