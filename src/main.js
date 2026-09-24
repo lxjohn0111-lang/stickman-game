@@ -1,4 +1,4 @@
-// Way Through: game bootstrap, level loading, state machine and render loop.
+// One Way Out: game bootstrap, level loading, state machine and render loop.
 import * as THREE from 'three';
 import { Materials } from './materials.js';
 import { World, SIGHT, BULLET, GLASS } from './world.js';
@@ -22,6 +22,10 @@ import { settings, loadSettings, saveSettings, loadStyle, saveStyle } from './se
 import { progress, loadProgress, saveProgress, resetProgressForTests } from './save.js';
 import { makeSkyTexture, makeBeltTexture } from './textures.js';
 import { t } from './i18n.js';
+import { platform, cache } from './platform.js';
+import { TouchControls, detectTouch } from './touch.js';
+import { setVariant } from './i18n.js';
+import { handwrite } from './handwriting.js';
 
 // Quality never touches gameplay: resolution, shadow map, particles, decals,
 // outline width.
@@ -32,11 +36,14 @@ const QUALITY = {
 };
 
 const nextFrame = () => new Promise((r) => requestAnimationFrame(() => r()));
-const PREVIEW_KEY = 'waythrough.preview.v1.';
+const PREVIEW_KEY = 'onewayout.preview.v1.';
 
 class Game {
   constructor() {
-    loadSettings();
+    const touch = detectTouch();
+    if (touch) setVariant('touch');
+    // phones start on Low quality; the player can raise it
+    loadSettings(touch ? { quality: 'low' } : {});
     loadProgress();
     this.settings = settings;
     this.style = loadStyle();
@@ -104,6 +111,8 @@ class Game {
     this.diff = DIFFICULTY[settings.difficulty] || DIFFICULTY.normal;
     this.quality = QUALITY[settings.quality] || QUALITY.high;
     this.ui = new UI(this);
+    this.touch = new TouchControls(this);
+    if (touch) this.touch.enable(true);
     this.orbitA = 0.6;
 
     this._wire();
@@ -115,7 +124,9 @@ class Game {
     this.last = performance.now();
     requestAnimationFrame((tt) => this.frame(tt));
     // the menu backdrop is the level the player will continue on
+    platform.onSettings = () => this.applySettings(false);
     this.loadLevel(Math.min(progress.last || 1, LEVELS.length), { backdrop: true }).then(() => {
+      platform.loading(false);
       window.__wtStarted = true;
       document.getElementById('boot').classList.add('hidden');
       this.state = 'menu';
@@ -221,6 +232,19 @@ class Game {
         this.ui.show('clicklock');
       }
     };
+    // a touch laptop or a tablet reported as a mouse device: switch to touch
+    // controls the first time the screen is actually touched
+    window.addEventListener('pointerdown', (e) => {
+      if (e.pointerType !== 'touch' || this.touch.active) return;
+      this.touch.enable(true);
+      setVariant('touch');
+      this.ui.applyTexts();
+      if (this.state === 'menu') this.ui.show('menu');
+    }, true);
+    // phones: the game is landscape only; turning to portrait pauses it
+    window.addEventListener('resize', () => {
+      if (this.touch.active && window.innerHeight > window.innerWidth) this.autoPause();
+    });
     // auto-pause whenever the page loses focus
     document.addEventListener('visibilitychange', () => { if (document.hidden) this.autoPause(); });
     window.addEventListener('blur', () => this.autoPause());
@@ -228,6 +252,17 @@ class Game {
 
   autoPause() {
     if (this.state === 'playing' || this.state === 'lockwait') this.pause();
+  }
+
+  // Phones outside the portal: go fullscreen and landscape when a level starts
+  // (the portal has its own fullscreen control).
+  _mobileFullscreen() {
+    if (!this.touch.active || platform.portal || document.fullscreenElement || !document.fullscreenEnabled) return;
+    try {
+      document.documentElement.requestFullscreen({ navigationUI: 'hide' }).then(() => {
+        try { screen.orientation.lock('landscape').catch(() => {}); } catch (e) { /* unsupported */ }
+      }).catch(() => {});
+    } catch (e) { /* unsupported */ }
   }
 
   resize() {
@@ -246,7 +281,8 @@ class Game {
       this.difficulty = s.difficulty;
       this.diff = DIFFICULTY[s.difficulty] || DIFFICULTY.normal;
     }
-    this.audio.setVolumes({ master: s.master, sfx: s.sfx, ambience: s.ambience, music: s.music });
+    // the portal's mute setting overrides the in-game volume
+    this.audio.setVolumes({ master: platform.muted ? 0 : s.master, sfx: s.sfx, ambience: s.ambience, music: s.music });
     const q = this.quality = QUALITY[s.quality] || QUALITY.high;
     if (this.sun.shadow.mapSize.x !== q.shadow) {
       this.sun.shadow.mapSize.set(q.shadow, q.shadow);
@@ -256,6 +292,8 @@ class Game {
     this.fx.q.decals = q.decals;
     if (this.materials.lineScale !== q.lines) this.materials.setLineScale(q.lines);
     if (this.renderer.getPixelRatio() !== Math.min(window.devicePixelRatio || 1, q.ratio)) this.resize();
+    const tl = document.getElementById('touch');
+    if (tl) tl.style.setProperty('--ts', String(s.touchSize || 1));
     if (save) saveSettings();
   }
 
@@ -415,6 +453,7 @@ class Game {
     const def = LEVELS[n - 1];
     this.ui.showLoading(def);
     this.state = 'loading';
+    platform.loading(true);
     try {
       await this.loadLevel(n);
     } catch (e) {
@@ -424,6 +463,7 @@ class Game {
     this._freshStart(false);
     this._prepareLevelAudio();
     this.state = 'ready';
+    platform.loading(false);
     this.ui.loadReady();
   }
 
@@ -441,6 +481,7 @@ class Game {
     if (this.state !== 'ready') return;
     this.audio.unlock();
     this.ui.resetRun();
+    this._mobileFullscreen();
     this.input.requestLock();
     const def = this.level.def;
     if (def.tutorial && !this.endlessMode) this.ui.showOverlay();
@@ -462,11 +503,13 @@ class Game {
     this.difficulty = settings.difficulty;
     this.ui.showLoading(LEVELS[n - 1], { endless: true, section: 0 });
     this.state = 'loading';
+    platform.loading(true);
     await this.loadLevel(n, { endless: true });
     this._freshStart(true);
     this.endless.beginSection(this.level);
     this._prepareLevelAudio();
     this.state = 'ready';
+    platform.loading(false);
     this.ui.loadReady();
   }
 
@@ -475,12 +518,14 @@ class Game {
     const locked = this.input.locked;
     this.ui.showLoading(LEVELS[n - 1], { endless: true, section: this.endless.section });
     this.state = 'loading';
+    platform.loading(true);
     await this.loadLevel(n, { endless: true });
     this._freshStart(true);
     this.endless.beginSection(this.level);
     this._prepareLevelAudio();
     this.ui.resetRun();
     this.state = 'ready';
+    platform.loading(false);
     if (locked && this.input.locked) { this._enterPlaying(); } else this.ui.loadReady();
   }
 
@@ -497,6 +542,7 @@ class Game {
     this.state = 'paused';
     this.input.capture = false;
     this.input.releaseAll();
+    this.touch.reset();
     this.input.exitLock();
     this.ui.show('pause');
   }
@@ -538,6 +584,7 @@ class Game {
 
   toMainMenu() {
     this.state = 'menu';
+    this.touch.reset();
     this.endlessMode = false;
     this.endless.stop();
     this.applySettings(false);
@@ -580,6 +627,7 @@ class Game {
 
   onPlayerDeath() {
     this.state = 'dead';
+    this.touch.reset();
     this.deathClock = 0;
     this.cardShown = false;
     this.ui.onDeath();
@@ -588,9 +636,11 @@ class Game {
 
   onLevelComplete(r) {
     this.state = 'results';
+    this.touch.reset();
     this.input.capture = false;
     this.input.exitLock();
     this.audio.play('levelComplete', { gain: 0.8, priority: true });
+    platform.happytime();
     this.audio.setMusic('musicMenu');
     this.ui.hideOverlay();
     this.ui.showResults(r, this.level.def);
@@ -603,7 +653,7 @@ class Game {
     const key = `${n}.${style}`;
     if (this.previewCache[key]) return Promise.resolve(this.previewCache[key]);
     try {
-      const stored = window.localStorage.getItem(PREVIEW_KEY + key);
+      const stored = cache.get(PREVIEW_KEY + key);
       if (stored) { this.previewCache[key] = stored; return Promise.resolve(stored); }
     } catch (e) { /* no storage */ }
     const job = this.previewQueue.then(() => this._renderPreview(n, style)).catch(() => '');
@@ -670,7 +720,7 @@ class Game {
     let url = '';
     try { url = c.toDataURL('image/jpeg', 0.8); } catch (e) { url = ''; }
     this.previewCache[key] = url;
-    try { window.localStorage.setItem(PREVIEW_KEY + key, url); } catch (e) { /* full */ }
+    cache.set(PREVIEW_KEY + key, url);
     return url;
   }
 
@@ -682,6 +732,7 @@ class Game {
     this.last = now;
     const dt = Math.min(realDt, 1 / 30);
     this.step(dt, realDt);
+    platform.gameplay(this.state === 'playing' && !document.hidden);
   }
 
   step(dt, realDt = dt) {
@@ -689,6 +740,7 @@ class Game {
     const L = this.level;
     if (st === 'playing' && L) {
       this.time += dt;
+      this.touch.update(dt);
       this.player.update(dt, this.input, settings);
       this.enemies.update(dt, true);
       this.bullets.update(dt, this.enemies, this.player);
@@ -836,10 +888,15 @@ class Game {
   }
 }
 
-function boot() {
+async function boot() {
+  window.__wtScript = true;
+  // the SDK must be ready before the saved progress is read from it
+  await platform.init();
+  platform.loading(true);
+  cache.dropLegacy('waythrough.preview.');
   try {
     const game = new Game();
-    window.WT = { game, snapshot: () => game.snapshot(), THREE, HOLD, progress, resetProgress: resetProgressForTests, t };
+    window.WT = { game, snapshot: () => game.snapshot(), THREE, HOLD, progress, resetProgress: resetProgressForTests, t, platform, handwrite };
   } catch (err) {
     console.error(err);
     const l = document.getElementById('boot-msg');

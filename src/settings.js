@@ -1,9 +1,10 @@
-// Player settings, persisted in localStorage. Every access is wrapped because
-// storage can be missing or throw (private windows, file:// quirks).
+// Player settings, persisted through the platform layer (the CrazyGames data
+// module on CrazyGames, localStorage elsewhere).
+import { store } from './platform.js';
 
-const KEY = 'waythrough.settings.v1';
-const STYLE_KEY = 'waythrough.style';
-const BEST_KEY = 'waythrough.best';
+const KEY = 'onewayout.settings.v1';
+const STYLE_KEY = 'onewayout.style';
+const BEST_KEY = 'onewayout.best';
 
 export const DEFAULTS = {
   sensitivity: 1.0,
@@ -19,18 +20,19 @@ export const DEFAULTS = {
   quality: 'high',
   ammo: true,
   fps: false,
+  aimAssist: true,
+  touchSize: 1.0,
 };
 
-function read(key) {
-  try { return window.localStorage.getItem(key); } catch (e) { return null; }
-}
-function write(key, value) {
-  try { window.localStorage.setItem(key, value); } catch (e) { /* ignore */ }
-}
+const read = (key) => store.get(key);
+const write = (key, value) => store.set(key, value);
 
 export const settings = { ...DEFAULTS };
 
-export function loadSettings() {
+// `overrides` are first-run defaults for this device (e.g. Low quality on
+// phones); anything the player saved wins.
+export function loadSettings(overrides = {}) {
+  Object.assign(settings, overrides);
   const raw = read(KEY);
   if (raw) {
     try {
@@ -54,13 +56,4 @@ export function loadStyle() {
 
 export function saveStyle(style) {
   write(STYLE_KEY, style);
-}
-
-export function loadBest() {
-  const v = Number(read(BEST_KEY));
-  return Number.isFinite(v) ? v : 0;
-}
-
-export function saveBest(v) {
-  write(BEST_KEY, String(v));
 }

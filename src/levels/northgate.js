@@ -1,4 +1,4 @@
-// Level 1 - North Gate: the original "Way Through" map, unchanged.
+// Level 1 - North Gate: the original map, unchanged.
 //   roof (y = 5) -> stair + locker room -> kitchen -> canteen
 //   -> fenced yard (water tower landmark, guard tower) -> North Gate.
 // Building footprint: x [-34, 3], z [0, 18]. Yard: x [-46, 16], z [-82, 0].

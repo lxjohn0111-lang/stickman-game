@@ -31,4 +31,4 @@ http.createServer((req, res) => {
     });
     res.end(data);
   });
-}).listen(port, () => console.log(`Way Through: http://localhost:${port}/`));
+}).listen(port, () => console.log(`One Way Out: http://localhost:${port}/`));

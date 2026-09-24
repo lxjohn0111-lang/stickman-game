@@ -3,11 +3,11 @@
 
 const en = {
   // ---- general
-  'game.title': 'Way through',
+  'game.title': 'One way out',
   'game.sub': 'a stickman shooter',
   'loading': 'Loading',
   'loading.error': 'Could not start: {msg} (WebGL is required)',
-  'loading.missing': 'The game script (dist/game.js) did not load. Keep index.html next to the dist folder, or open waythrough.html instead.',
+  'loading.missing': 'The game script (dist/game.js) did not load. Keep index.html next to the dist folder, or open onewayout.html instead.',
 
   // ---- menu
   'menu.play': 'Play',
@@ -109,19 +109,47 @@ const en = {
   'settings.enter': 'Enter',
   'settings.exit': 'Exit',
 
+  // ---- touch devices (used instead of the key above them on phones/tablets)
+  'style.hint.touch': 'Previews are rendered from the game itself. You can switch style from the pause menu during play; your choice is saved.',
+  'controls.reminder.touch': 'Left thumb: move · Right thumb: look · Fire button: shoot · Tap the prompt to open doors and swap guns',
+  'tip.doors.touch': 'Tap the prompt under the crosshair to open doors. They swing away from you and stop bullets.',
+  'tip.reload.touch': 'Tap the reload button before you run dry.',
+  'tip.swap.touch': 'Fallen enemies drop their guns. Look at one and tap the prompt to swap; the weapon button switches guns.',
+  'tip.style.touch': 'Pause at any time to switch between the Classic and Neobrutalist styles.',
+  'overlay.dismiss.touch': 'Move or fire to start',
+  'howto.body.touch': '<p>Eight levels, each with its own objective. Follow the objective at the top left; the diamond marker shows where to go.</p><p><b>Controls.</b> Drag anywhere on the left half to move (push to the edge to sprint) and drag on the right half to look. Hold the big button to fire; a light aim assist helps while you shoot. When a door, switch or gun is in front of you, a button with its action appears: tap it.</p><p><b>Fight smart.</b> Enemies notice you gradually, fight in bursts, chase you through doors and search where they last saw you. Headshots do 2.5&times; damage. Snipers show a red laser for about a second before they fire: move.</p><p><b>Health.</b> It regenerates after 5 seconds out of fire, up to a limit set by the difficulty. Health kits restore 35.</p><p><b>Checkpoints</b> activate once nearby fighting is over. <b>Secrets:</b> three hidden stars per level reward exploring. <b>Stars:</b> finish a level for one, score well for two or three.</p>',
+  'touch.move': 'Drag on the left half',
+  'touch.movem': 'Move (push to the edge to sprint)',
+  'touch.look': 'Drag on the right half',
+  'touch.lookm': 'Look around',
+  'touch.fire': 'Fire (hold for automatic weapons)',
+  'touch.aim': 'Steady aim (toggle)',
+  'touch.jump': 'Jump; let go of a ladder',
+  'touch.crouch': 'Crouch (toggle)',
+  'touch.reload': 'Reload',
+  'touch.swap': 'Switch main weapon / sidearm',
+  'touch.use': 'Doors, switches, swap guns, take ammo (appears when available)',
+  'touch.pause': 'Pause, style, settings',
+  'touch.ladder': 'Climb ladders: push forward into them',
+  'settings.aimAssist': 'Aim assist (touch)',
+  'settings.touchSize': 'Touch button size',
+  'settings.portalMuted': 'Sound is muted by the site settings.',
+  'rotate.title': 'Turn your device',
+  'rotate.body': 'One Way Out plays in landscape.',
+
   // ---- how to
   'howto.title': 'How to Play',
   'howto.body': '<p>Eight levels, each with its own objective. Follow the objective at the top left; the diamond marker shows where to go.</p><p><b>Fight smart.</b> Enemies notice you gradually, fight in bursts, chase you through doors and search where they last saw you. Headshots do 2.5&times; damage. Snipers show a red laser for about a second before they fire: move.</p><p><b>Dodge.</b> Enemy bullets are slow teardrops. Watch them come and side-step.</p><p><b>Health.</b> The bar at the bottom left shows your health. It regenerates after 5 seconds out of fire, up to a limit set by the difficulty. Health kits restore 35.</p><p><b>Weapons.</b> You carry a main weapon and a sidearm; press 1 and 2 to switch. Fallen enemies drop their gun with its remaining ammo: press F to swap, or to take its ammo if you carry the same gun.</p><p><b>Checkpoints</b> activate once nearby fighting is over. <b>Secrets:</b> three hidden stars per level reward exploring.</p><p><b>Stars.</b> Finish a level for one star; score well for two or three. Score comes from kills, headshots, accuracy, speed and remaining health, and consecutive kills without taking damage build a combo.</p>',
 
   // ---- achievements
   'ach.title': 'Achievements',
-  'ach.campaign': 'Way Through',
+  'ach.campaign': 'One Way Out',
   'ach.campaign.d': 'Complete all eight levels.',
   'ach.secrets': 'Explorer',
   'ach.secrets.d': 'Find every secret in the campaign.',
   'ach.flawless': 'Untouched',
   'ach.flawless.d': 'Finish a level without taking damage.',
-  'ach.hard': 'Hard Way Through',
+  'ach.hard': 'The Hard Way Out',
   'ach.hard.d': 'Complete the campaign on Hard.',
   'ach.unlocked': 'Unlocked',
   'ach.locked': 'Locked',
@@ -130,7 +158,7 @@ const en = {
 
   // ---- credits
   'credits.title': 'Credits',
-  'credits.body': '<p><b>Way Through</b>: a first-person stickman shooter campaign.</p><p>Rendering: three.js r170 (MIT), bundled with esbuild.</p><p>Art: none on disk. Every object is built at load time from boxes, cylinders and cones, and outlined with screen-space ink lines.</p><p>Sound and music: none on disk. Everything is synthesised with the Web Audio API.</p>',
+  'credits.body': '<p><b>One Way Out</b>: a first-person stickman shooter campaign.</p><p>Rendering: three.js r170 (MIT), bundled with esbuild.</p><p>Art: none on disk. Every object is built at load time from boxes, cylinders and cones, and outlined with screen-space ink lines.</p><p>Sound and music: none on disk. Everything is synthesised with the Web Audio API.</p>',
 
   // ---- HUD
   'hud.health': 'Health',
@@ -212,13 +240,13 @@ const en = {
   'load.ready': 'Ready',
 
   // ---- death card
-  'death.title': 'No way through.',
+  'death.title': 'No way out.',
   'death.checkpoint': 'Restart Checkpoint',
   'death.level': 'Restart Level',
   'death.main': 'Main Menu',
 
   // ---- results card
-  'res.title': 'Way through.',
+  'res.title': 'Way out.',
   'res.campaign': 'Campaign complete.',
   'res.time': 'Time',
   'res.kills': 'Kills',
@@ -347,8 +375,14 @@ export function setLanguage(code) {
   if (LANGS[code]) lang = code;
 }
 
+// On touch devices, a 'key.touch' entry (if there is one) replaces 'key'.
+let variant = '';
+export function setVariant(v) { variant = v || ''; }
+
 export function t(key, vars) {
-  let s = (LANGS[lang] && LANGS[lang][key]) ?? en[key];
+  const L = LANGS[lang] || en;
+  let s = variant ? (L[key + '.' + variant] ?? en[key + '.' + variant]) : undefined;
+  if (s === undefined) s = L[key] ?? en[key];
   if (s === undefined) return key;
   if (vars) s = s.replace(/\{(\w+)\}/g, (m, k) => (vars[k] !== undefined ? String(vars[k]) : m));
   return s;

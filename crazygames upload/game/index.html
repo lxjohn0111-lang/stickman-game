@@ -1,3 +1,12 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#ffffff">
 <title>One Way Out</title>
 <style>
   :root {
@@ -409,7 +418,8 @@
   }
   @media (prefers-reduced-motion: reduce) { .screen, .panel, .card { animation: none; } }
 </style>
-<script>document.body.classList.add('style-classic');</script>
+</head>
+<body class="style-classic">
 <canvas id="game"></canvas>
 
 <div id="touch">
@@ -530,9 +540,11 @@
   window.__wtBootFail = function () {
     if (window.__wtStarted || window.__wtScript) return;
     var m = document.getElementById('boot-msg');
-    m.textContent = 'The game script (dist/game.js) did not load. Keep index.html next to the dist folder, or open onewayout.html, which has everything in one file.';
+    m.textContent = 'The game could not be loaded. Please reload the page.';
     m.classList.remove('hidden');
   };
   window.__wtBootTimer = setTimeout(window.__wtBootFail, 8000);
 </script>
-<script src="dist/game.js" onerror="window.__wtBootFail && window.__wtBootFail()"></script>
+<script src="game.js" onerror="window.__wtBootFail && window.__wtBootFail()"></script>
+</body>
+</html>

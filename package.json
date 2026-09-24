@@ -1,8 +1,8 @@
 {
-  "name": "way-through",
+  "name": "one-way-out",
   "version": "1.0.0",
   "private": true,
-  "description": "Way Through - a first-person 3D stickman shooter for the browser",
+  "description": "One Way Out - a first-person 3D stickman shooter for the browser",
   "scripts": {
     "build": "node build.mjs",
     "watch": "node build.mjs --watch",

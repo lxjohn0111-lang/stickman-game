@@ -30,6 +30,8 @@ export class Input {
     this.lastY = null;
     this.ignoreNext = 0;
     this.wheel = 0;
+    this.touchMode = false; // set by TouchControls
+    this.stick = null; // touch joystick {f, s}, analog -1..1
 
     window.addEventListener('keydown', (e) => {
       if (e.repeat) { if (this.capture && ['Space', 'Tab'].includes(e.code)) e.preventDefault(); return; }
@@ -46,7 +48,8 @@ export class Input {
       if (e.button === 0) this.left = false;
       if (e.button === 2) this.right = false;
     });
-    window.addEventListener('contextmenu', (e) => { if (this.capture || this.locked) e.preventDefault(); });
+    // no browser context menu anywhere in the game (right click is steady aim)
+    window.addEventListener('contextmenu', (e) => e.preventDefault());
     window.addEventListener('mousemove', (e) => this._move(e));
     window.addEventListener('wheel', (e) => { if (this.capture && Math.abs(e.deltaY) > 1) this.wheel += Math.sign(e.deltaY); }, { passive: true });
     document.addEventListener('pointerlockchange', () => {
@@ -60,6 +63,7 @@ export class Input {
   }
 
   _down(e) {
+    if (this.touchMode) return; // taps also fire emulated mouse events
     if (e.button === 0) { this.left = true; this.leftPressed = true; }
     if (e.button === 2) this.right = true;
   }
@@ -71,7 +75,7 @@ export class Input {
       dy = this.lastY === null ? 0 : e.clientY - this.lastY;
     }
     this.lastX = e.clientX; this.lastY = e.clientY;
-    if (!this.capture) return;
+    if (!this.capture || this.touchMode) return;
     if (!this.locked && !this.fallback) return;
     if (this.ignoreNext > 0 && (Math.abs(dx) > 150 || Math.abs(dy) > 150)) { this.ignoreNext--; return; }
     // guard against the occasional huge spike some browsers report
@@ -128,7 +132,7 @@ export class Input {
   }
 
   // Forget held keys/buttons (focus loss, pause).
-  releaseAll() { this.keys = Object.create(null); this.left = this.right = false; }
+  releaseAll() { this.keys = Object.create(null); this.left = this.right = false; this.stick = null; }
 
   down(code) { return !!this.keys[code]; }
   hit(code) { return !!this.pressed[code]; }

@@ -2,8 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Way Through</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#ffffff">
+<title>One Way Out</title>
 <style>
   :root {
     --ink: #111;
@@ -310,6 +313,101 @@
   #styletoast { position: fixed; left: 50%; top: 14%; transform: translateX(-50%); padding: 6px 14px; background: #fff; border: 1px solid #111; font-size: 12px; letter-spacing: .2em; text-transform: uppercase; opacity: 0; transition: opacity .3s; pointer-events: none; }
   body.style-neo #styletoast { border: 3px solid #000; box-shadow: 4px 4px 0 #000; background: #ffe600; font-family: var(--sans); font-weight: 900; }
 
+
+  /* ---------------- touch controls ---------------- */
+  html, body { overscroll-behavior: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+  input, textarea { -webkit-user-select: auto; user-select: auto; }
+  #touch { display: none; position: fixed; inset: 0; touch-action: none; --ts: 1; }
+  body.touch.playing:not(.is-dead) #touch { display: block; }
+  #touch .tbtn { all: unset; position: absolute; box-sizing: border-box; display: grid; place-items: center; border-radius: 50%; border: 1.5px solid rgba(17,17,17,.75); background: rgba(255,255,255,.55); color: #111; touch-action: none; }
+  #touch .tbtn svg { width: 58%; height: 58%; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+  #touch .tbtn svg .f { fill: currentColor; }
+  #touch .tbtn.down { background: rgba(17,17,17,.85); color: #fff; transform: scale(.94); }
+  #touch .tbtn.on { background: #111; color: #fff; }
+  #touch .t-fire { width: calc(88px * var(--ts)); height: calc(88px * var(--ts)); right: calc(34px + env(safe-area-inset-right)); bottom: calc(40px * var(--ts)); border-width: 2px; }
+  #touch .t-reload { width: calc(52px * var(--ts)); height: calc(52px * var(--ts)); right: calc(52px + env(safe-area-inset-right)); bottom: calc(146px * var(--ts)); }
+  #touch .t-aim { width: calc(52px * var(--ts)); height: calc(52px * var(--ts)); right: calc(138px * var(--ts) + env(safe-area-inset-right)); bottom: calc(120px * var(--ts)); }
+  #touch .t-jump { width: calc(58px * var(--ts)); height: calc(58px * var(--ts)); right: calc(142px * var(--ts) + env(safe-area-inset-right)); bottom: calc(28px * var(--ts)); }
+  #touch .t-crouch { width: calc(48px * var(--ts)); height: calc(48px * var(--ts)); right: calc(214px * var(--ts) + env(safe-area-inset-right)); bottom: calc(22px * var(--ts)); }
+  #touch .t-swap { width: calc(48px * var(--ts)); height: calc(48px * var(--ts)); right: calc(212px * var(--ts) + env(safe-area-inset-right)); bottom: calc(92px * var(--ts)); }
+  #touch .t-pause { width: 42px; height: 42px; border-radius: 8px; right: calc(12px + env(safe-area-inset-right)); top: calc(10px + env(safe-area-inset-top)); }
+  #touch .stick { position: absolute; left: 0; top: 0; width: calc(112px * var(--ts)); height: calc(112px * var(--ts)); margin: calc(-56px * var(--ts)) 0 0 calc(-56px * var(--ts)); border-radius: 50%; border: 1.5px solid rgba(17,17,17,.6); background: rgba(255,255,255,.3); display: none; pointer-events: none; }
+  #touch .stick.on { display: block; }
+  #touch .stick i { position: absolute; left: 50%; top: 50%; width: 46%; height: 46%; margin: -23% 0 0 -23%; border-radius: 50%; background: rgba(17,17,17,.7); }
+  #touch .stick.sprint { border-color: #111; border-width: 3px; }
+  #touch .stick-hint { position: absolute; left: calc(40px + env(safe-area-inset-left)); bottom: calc(34px * var(--ts)); width: calc(96px * var(--ts)); height: calc(96px * var(--ts)); border-radius: 50%; border: 1.5px dashed rgba(17,17,17,.35); pointer-events: none; }
+  #touch .stick.on ~ .stick-hint { display: none; }
+  body.style-neo #touch .tbtn { border: 3px solid #000; background: #fff; box-shadow: 3px 3px 0 #000; color: #000; }
+  body.style-neo #touch .t-fire { background: #ff5fa2; }
+  body.style-neo #touch .t-jump { background: var(--accent-3); }
+  body.style-neo #touch .t-reload { background: var(--accent); }
+  body.style-neo #touch .tbtn.down { background: #000; color: #fff; box-shadow: none; transform: translate(3px, 3px); }
+  body.style-neo #touch .tbtn.on { background: #2dff7a; color: #000; }
+  body.style-neo #touch .stick { border: 3px solid #000; background: rgba(255,255,255,.45); }
+  body.style-neo #touch .stick i { background: #ff5fa2; border: 3px solid #000; }
+  body.style-neo #touch .stick-hint { border: 3px dashed rgba(0,0,0,.45); }
+  /* HUD on touch screens: health and ammo move to the top so thumbs don't cover them */
+  body.touch #status { left: auto; right: calc(66px + env(safe-area-inset-right)); bottom: auto; top: calc(8px + env(safe-area-inset-top)); gap: 8px; align-items: flex-start; }
+  body.touch #health { width: 170px; }
+  body.touch #ammo { min-width: 0; }
+  body.touch #ammo .mag { font-size: 18px; }
+  body.touch #scorebox { right: calc(12px + env(safe-area-inset-right)); top: calc(60px + env(safe-area-inset-top)); }
+  body.touch #objective { left: calc(14px + env(safe-area-inset-left)); top: calc(10px + env(safe-area-inset-top)); max-width: min(34vw, calc(100vw - 420px)); font-size: 11px; }
+  body.touch #bossbar, body.touch #area, body.touch #perf { top: calc(70px + env(safe-area-inset-top)); }
+  body.touch #prompt { pointer-events: auto; top: 58%; font-size: 14px; padding: 8px 16px 8px 8px; touch-action: none; }
+  body.touch #prompt.down { transform: translateX(-50%) scale(.95); }
+  body.touch #overlay { bottom: auto; top: 30%; padding: 8px 12px; font-size: 11px; max-width: 70vw; }
+  body.touch #overlay .grid { gap: 3px 12px; }
+  body.touch #overlay .grid div { white-space: normal; }
+  body.touch #tip { bottom: auto; top: 22%; max-width: 60vw; }
+  body.touch #toast { bottom: auto; top: 38%; }
+  body.touch #fps { right: auto; left: 12px; bottom: 4px; }
+  /* portrait on a phone: ask to turn it */
+  #rotate { display: none; position: fixed; inset: 0; z-index: 50; align-items: center; justify-content: center; background: #fff; text-align: center; padding: 24px; }
+  body.style-neo #rotate { background: #8fd8ff; }
+  #rotate .card { min-width: 0; }
+  #rotate .ph { width: 72px; height: 72px; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; display: block; margin: 0 auto 10px; }
+  #rotate p { margin: 6px 0 0; font-size: 12px; color: var(--muted); }
+  @media (orientation: portrait) { body.touch #rotate { display: flex; } }
+
+  /* ---------------- small landscape screens (phones) ---------------- */
+  @media (max-height: 540px) {
+    #menu, #pause { padding: 10px calc(12px + env(safe-area-inset-right)) 10px calc(12px + env(safe-area-inset-left)); gap: 12px; }
+    .menu-left { min-width: 190px; max-width: 220px; gap: 8px; overflow-y: auto; }
+    .logo { padding: 0; }
+    .logo svg.hw { height: 34px; width: auto; }
+    .logo .sub { font-size: 9px; }
+    body.style-neo .logo { padding: 6px 10px 4px; }
+    nav.menu-nav { gap: 4px; }
+    nav.menu-nav button, .btn { font-size: 11px; padding: 6px 10px; letter-spacing: .12em; }
+    nav.menu-nav button.primary { font-size: 13px; padding: 8px 10px; }
+    body.style-neo nav.menu-nav button { box-shadow: 3px 3px 0 #000; }
+    .panel { max-height: calc(100vh - 20px); padding: 12px 16px; font-size: 12px; }
+    body.style-neo .panel h2 { margin: -12px -16px 10px; padding: 8px 16px; font-size: 15px; }
+    .levels { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+    .settings { gap: 6px 12px; }
+    .card { padding: 12px 22px 12px; max-height: calc(100vh - 12px); }
+    .card .title svg.hw { height: 38px; width: auto; }
+    .card .title { margin: 0 0 6px; }
+    .card .lname { font-size: 18px; }
+    .card .place { margin-bottom: 8px; }
+    .card .goal { font-size: 12px; margin-bottom: 6px; }
+    .card .reminder { margin: 6px 0 8px; }
+    .progress { margin: 6px auto 10px; }
+    .bigstars { font-size: 24px; margin-bottom: 4px; }
+    .badge { margin-bottom: 4px; }
+    .stats { gap: 2px 20px; font-size: 12px; margin-bottom: 8px; }
+    .btn-try { padding: 9px 20px; }
+    .btn-ghost { padding: 7px 12px; }
+    #results .card { display: grid; grid-template-columns: auto auto; column-gap: 28px; align-items: center; }
+    #results .card > .title, #results .card > .kicker, #results .card > .bigstars, #results .card > #res-badges { grid-column: 1; }
+    #results .card > .stats { grid-column: 2; grid-row: 1 / span 4; }
+    #results .card > .campaign, #results .card > #res-btns { grid-column: 1 / span 2; }
+  }
+  @media (max-width: 760px) and (orientation: landscape) {
+    #menu, #pause { flex-direction: row; }
+    .styles, .mission { grid-template-columns: 1fr 1fr; }
+  }
   svg.hw { overflow: visible; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; display: inline-block; }
   @keyframes hw-draw { to { stroke-dashoffset: 0; } }
   @media (max-width: 760px) {
@@ -323,6 +421,17 @@
 <body class="style-classic">
 <canvas id="game"></canvas>
 
+<div id="touch">
+  <div class="stick"><i></i></div>
+  <div class="stick-hint"></div>
+  <button class="tbtn t-fire" data-tb="fire" aria-label="fire"><svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="11"/><path d="M20 3v9M20 28v9M3 20h9M28 20h9"/><circle cx="20" cy="20" r="1.6" class="f"/></svg></button>
+  <button class="tbtn t-aim" data-tb="aim" aria-label="aim"><svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="13"/><circle cx="20" cy="20" r="5"/></svg></button>
+  <button class="tbtn t-jump" data-tb="jump" aria-label="jump"><svg viewBox="0 0 40 40"><path d="M9 25l11-11 11 11"/></svg></button>
+  <button class="tbtn t-crouch" data-tb="crouch" aria-label="crouch"><svg viewBox="0 0 40 40"><path d="M9 13l11 11 11-11M9 31h22"/></svg></button>
+  <button class="tbtn t-reload" data-tb="reload" aria-label="reload"><svg viewBox="0 0 40 40"><path d="M30 14a12 12 0 1 0 2 10"/><path d="M31 6v9h-9"/></svg></button>
+  <button class="tbtn t-swap" data-tb="swap" aria-label="swap"><svg viewBox="0 0 40 40"><path d="M8 14h22l-6-6M32 26H10l6 6"/></svg></button>
+  <button class="tbtn t-pause" data-tb="pause" aria-label="pause"><svg viewBox="0 0 40 40"><path d="M15 11v18M25 11v18"/></svg></button>
+</div>
 <div id="hud" class="hidden">
   <div id="vignette"></div>
   <div id="healflash"></div>
@@ -421,14 +530,16 @@
 
 <div id="clicklock" class="screen hidden"><div class="card"><strong data-t="clicklock.title"></strong><p data-t="clicklock.body"></p></div></div>
 <div id="styletoast"></div>
+<div id="rotate"><div class="card"><svg viewBox="0 0 64 64" class="ph"><rect x="20" y="8" width="24" height="44" rx="4"/><path d="M50 40a18 18 0 0 1-18 18M28 58h4v-4"/></svg><strong data-t="rotate.title"></strong><p data-t="rotate.body"></p></div></div>
+
 <div id="boot"><div>Loading&hellip;</div><div class="msg hidden" id="boot-msg"></div></div>
 <script>
   // If the game script never starts (missing dist/game.js, blocked file), say
   // so instead of showing "Loading" forever.
   window.__wtBootFail = function () {
-    if (window.__wtStarted) return;
+    if (window.__wtStarted || window.__wtScript) return;
     var m = document.getElementById('boot-msg');
-    m.textContent = 'The game script (dist/game.js) did not load. Keep index.html next to the dist folder, or open waythrough.html, which has everything in one file.';
+    m.textContent = 'The game script (dist/game.js) did not load. Keep index.html next to the dist folder, or open onewayout.html, which has everything in one file.';
     m.classList.remove('hidden');
   };
   window.__wtBootTimer = setTimeout(window.__wtBootFail, 8000);

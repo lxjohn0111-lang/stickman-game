@@ -123,8 +123,12 @@ export class Player {
     this.recoilPitch *= Math.exp(-dt * 8);
 
     // ---- movement
-    const f = (input.down('KeyW') ? 1 : 0) - (input.down('KeyS') ? 1 : 0);
-    const s = (input.down('KeyD') ? 1 : 0) - (input.down('KeyA') ? 1 : 0);
+    let f = (input.down('KeyW') ? 1 : 0) - (input.down('KeyS') ? 1 : 0);
+    let s = (input.down('KeyD') ? 1 : 0) - (input.down('KeyA') ? 1 : 0);
+    // touch joystick: analog direction and speed
+    const stick = input.stick;
+    let mag = 1;
+    if (stick && (stick.f || stick.s)) { f = stick.f; s = stick.s; mag = Math.min(1, Math.hypot(f, s)); }
     if (f || s) this.lastActed = g.time;
     const wantCrouch = input.down('KeyC') || input.down('ControlLeft');
     this.aiming = input.right && !this.reloading && !this.climb;
@@ -144,11 +148,12 @@ export class Player {
     if (this.crouch > 0.5) speed = PLAYER.crouchSpeed;
     else if (this.aiming) speed = PLAYER.aimSpeed;
     else if (this.sprinting) speed = PLAYER.sprint;
+    if (stick) speed *= Math.max(0.35, mag);
 
     const wasGrounded = b.grounded;
     const fallSpeed = -b.vy;
     const x0 = b.x, z0 = b.z, y0 = b.y;
-    if (this.updateLadder(dt, input, f)) {
+    if (this.updateLadder(dt, input, stick ? (Math.abs(f) > 0.3 ? Math.sign(f) : 0) : f)) {
       // climbing handled the body this frame
     } else {
       if (b.grounded) {

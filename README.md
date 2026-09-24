@@ -1,6 +1,8 @@
-# Way Through
+# One Way Out
 
-A first-person stickman shooter campaign for the browser: eight levels, three difficulties, Endless Mode, and two visual styles you can switch at any moment. It is built for web portals like CrazyGames: it's playable within two clicks, keyboard and mouse come first, it pauses on focus loss, and it saves progress in localStorage.
+A first-person stickman shooter campaign for the browser: eight levels, three difficulties, Endless Mode, and two visual styles you can switch at any moment. It is built for CrazyGames: it's playable within two clicks, it works with keyboard and mouse or with touch controls on phones and tablets, it pauses on focus loss, and it saves progress through the CrazyGames SDK's data module (localStorage everywhere else).
+
+(The game was called *Way Through* before; saves from that version carry over.)
 
 Everything is built at load time. The geometry is boxes, cylinders and cones outlined with screen-space ink lines, every texture is drawn on a canvas, and every sound and both music loops are synthesised with the Web Audio API. There are no image, model or audio files.
 
@@ -8,7 +10,8 @@ Everything is built at load time. The geometry is boxes, cylinders and cones out
 
 | How | What to open |
 | --- | --- |
-| Offline, one file | `waythrough.html`, which has the game script inlined. Double-click it; nothing else is needed. |
+| CrazyGames | The folder `crazygames upload/`: `game/` holds the two files to upload (with the CrazyGames SDK), next to the covers, preview videos, description, controls and an upload guide (in Hungarian). |
+| Offline, one file | `onewayout.html`, which has the game script inlined. Double-click it; nothing else is needed. |
 | Offline, from the repo | `index.html`, which loads `dist/game.js` (committed). Keep the `dist/` folder next to it. If the script can't load, the page says so after a few seconds instead of loading forever. |
 | Local server | `node server.js` → http://localhost:8080 (`node server.js 3000` for another port) |
 
@@ -16,7 +19,7 @@ Rebuild after editing `src/`:
 
 ```sh
 npm install             # esbuild only; three.js is vendored in vendor/three
-npm run build           # dist/game.js + waythrough.html + artifact/index.html
+npm run build           # dist/game.js + onewayout.html + artifact/index.html + crazygames upload/game/
 npm run watch           # rebuild dist/game.js on change
 ```
 
@@ -53,13 +56,13 @@ npm run watch           # rebuild dist/game.js on change
 
 Level 8 brings back pieces of earlier levels: port containers on the dock, the desert watchtower and sandbags, the North Gate water tower, and a tiled tunnel from the station.
 
-A first run takes about 45 to 60 minutes, and each level about 5 to 10 minutes. Every level has 2 to 3 checkpoints, 3 secrets, health kits, ammo and several weapons to try.
+A first run is designed to take about 45 to 60 minutes, and each level about 5 to 10 minutes (not yet timed with players). Every level has 2 to 3 checkpoints, 3 secrets, health kits, ammo and several weapons to try.
 
 ### Progression and saving
 
 - **Play / Continue** starts the latest unlocked level. **Level Select** shows a preview rendered from the level itself, plus name, best score, best time, stars and secrets. Levels unlock in order, and finished levels can be replayed.
 - **Easy / Normal / Hard** change enemy health, accuracy, reaction time, damage, the number of optional pickups and how far health regenerates (100 / 75 / 50). They never change the layout.
-- **Saved in localStorage** (`waythrough.save.v2`, `waythrough.settings.v1`, `waythrough.style`): unlocked levels, last level, per-level best score, time, stars and secrets, achievements, Endless records, campaign totals, settings and style.
+- **Saved** under `onewayout.save.v1`, `onewayout.settings.v1` and `onewayout.style`: unlocked levels, last level, per-level best score, time, stars and secrets, achievements, Endless records, campaign totals, settings and style. On CrazyGames these go through the SDK's data module, so a signed-in player's progress follows their account across devices; elsewhere they go to localStorage. Old `waythrough.*` saves are moved to the new keys once. Level preview images are a cache and always stay in localStorage.
 - **Loading card:** level name, place, objective and a control reminder, with a progress bar while the level builds in stages. Then "Click to start".
 - **Results card:** time, kills, headshots, accuracy, damage taken, secrets and score, with the stars awarded and **Next Level / Replay / Main Menu** buttons.
 - **Death card:** **Restart Checkpoint / Restart Level / Main Menu**.
@@ -68,7 +71,7 @@ A first run takes about 45 to 60 minutes, and each level about 5 to 10 minutes. 
 
 Kills are worth 100 and headshots add 50. Each kill multiplies by a combo: +10% per kill without taking damage, up to ×2. The final score adds accuracy × 1000, 4 points per second under par, 5 per remaining health point and 250 per secret, all scaled by difficulty (×0.8 / 1 / 1.3). Stars are 1 for finishing, then 2 or 3 for reaching `enemies × 80 + 700` or `enemies × 130 + 1400` points before the difficulty scaling. Three stars are reachable without perfect play.
 
-**Achievements:** Way Through (finish all levels), Explorer (find all 24 secrets), Untouched (finish a level without damage), Hard Way Through (finish every level on Hard).
+**Achievements:** One Way Out (finish all levels), Explorer (find all 24 secrets), Untouched (finish a level without damage), The Hard Way Out (finish every level on Hard).
 
 **Endless Mode** unlocks when you finish the campaign. It shuffles sections of the campaign maps, three waves per section, with bigger and tougher waves each time. It ends on death and saves your best wave and score.
 
@@ -109,18 +112,41 @@ Kills are worth 100 and headshots add 50. Each kill multiplies by a combo: +10% 
 - **Auto-pause** when the tab or window loses focus. Resuming waits for a click and a successful pointer lock; if the browser refuses, a "Click to resume" card appears.
 - **Localisation:** every player-facing string lives in `src/i18n.js`, so adding a language is one more table.
 - **Audio:** master, music and effects volume, with music quieter by default. No sound or music plays before the first click. There is a procedural menu theme, plus a separate low-intensity combat loop that comes in while enemies fight you and fades out after.
-- **Fullscreen** toggle.
+- **Fullscreen** toggle, hidden on CrazyGames (the portal has its own, and forbids a custom one) and where the browser can't do it. No context menu and no text selection anywhere in the game.
 - **Quality:** Low, Medium or High changes resolution, shadow-map size, particle and decal counts and outline width, never gameplay. If the frame rate stays below 40 fps for 10 s, a hint suggests a lower setting; the game never changes it for you.
 - **Loading:** levels load in stages over several frames with a progress bar. Geometry, per-level textures, enemies, pickups, effects and loops are disposed or reset between levels.
 - **Buttons** have hover, active and focus states in both styles, and screens fade in quickly.
+
+## Phones and tablets
+
+Touch screens are detected at start (a coarse primary pointer); a touch laptop switches to touch controls the first time its screen is touched.
+
+- **Move:** drag anywhere on the left half. The joystick appears under your thumb and follows it if you wander off; the speed is analog, and pushing to the rim sprints.
+- **Look:** drag on the right half. Dragging on the fire button looks as well, so you can aim while shooting.
+- **Buttons:** fire (hold for automatic weapons), steady aim (toggle), jump, crouch (toggle), reload, weapon swap and pause. The interaction prompt under the crosshair ("Open", "Swap for AK Rifle"...) is itself the button. Button size is a setting.
+- **Aim assist** (a setting, on by default): while the fire button is held, the view is pulled gently toward the enemy nearest the crosshair (within about 6°).
+- **Layout:** health and ammo move to the top right so thumbs don't cover them; menus, Level Select and every card are laid out for landscape phone screens down to 740x360. In portrait a "Turn your device" card appears and play pauses.
+- **Defaults:** Low quality on the first run (the player can raise it), no pointer lock, touch wording in the hints, tips, tutorial overlay and controls page. Outside CrazyGames, starting a level also asks for fullscreen and a landscape lock where the browser allows it.
+
+## CrazyGames SDK
+
+`src/platform.js` wraps the CrazyGames HTML5 SDK v3, which only the CrazyGames build loads (`<script src="https://sdk.crazygames.com/crazygames-sdk-v3.js">` in `<head>`):
+
+- `SDK.init()` runs before anything reads the save (with a 5 s timeout, so a blocked SDK never stops the game).
+- Progress and settings use `SDK.data.getItem/setItem` when the environment is `crazygames` or `local`; with no SDK, a `disabled` one or a failed init, localStorage.
+- `loadingStart/Stop` around the boot and every level load; `gameplayStart/Stop` follow whether the game is actually being played (pause, focus loss, death, menus and result screens stop it); `happytime()` on level complete.
+- The portal's `muteAudio` setting silences the game, including changes while it runs (`addSettingsChangeListener`).
+- No ads are requested.
 
 ## Project layout
 
 ```
 index.html              markup + CSS for both styles; boot watchdog; loads dist/game.js
-waythrough.html         generated: the same page with the script inlined
+onewayout.html          generated: the same page with the script inlined
+crazygames upload/      generated game/ build with the SDK, plus covers, videos, texts and a guide
 artifact/index.html     generated: page body for the hosted preview
-build.mjs               esbuild bundle + the two generated pages
+build.mjs               esbuild bundle + the generated pages and the CrazyGames build
+tools/                  store media: covers.mjs (3 covers), video.mjs (preview videos), stage.mjs
 server.js               tiny static file server
 vendor/three/           three.js r170 + the line/geometry addons used (MIT)
 src/
@@ -138,7 +164,9 @@ src/
   env.js                rain, snow + footprints, dust, wet-street reflections
   ui.js                 HUD, menus, Level Select, cards, settings, minimap
   i18n.js               all player-facing text
-  save.js / settings.js localStorage progress and settings
+  platform.js           CrazyGames SDK v3 wrapper and the storage it picks
+  touch.js              touch controls and aim assist
+  save.js / settings.js progress and settings (through platform.js)
   audio.js              synthesised sounds, music loops, ambience beds, echo send
   world.js nav.js doors.js builder.js materials.js textures.js fx.js bullets.js guns.js viewmodel.js input.js
 tests/                  Playwright harness, objective bot and test suites
@@ -149,13 +177,15 @@ tests/                  Playwright harness, objective bot and test suites
 The browser tests need Playwright with Chromium; SwiftShader WebGL is fine.
 
 ```sh
-npm test                          # systems, pointer lock, UI flows, qualities, full campaign
+npm test                          # systems, pointer lock, UI flows, qualities, mobile, SDK, full campaign
 node tests/systems.mjs            # movement, weapons, health, slots, enemies, checkpoints, styles, quality
 node tests/campaign.mjs           # all 8 levels in sequence through the menus on Normal
                                   # (--from 4 --to 8 to run part of it)
 node tests/level.mjs 5 --god      # one level with the objective bot
 node tests/ui.mjs                 # menus, Level Select, cards, Endless
 node tests/qualities.mjs          # every level at Low, Medium and High
+node tests/mobile.mjs             # touch controls and layout on an emulated phone
+node tests/sdk.mjs                # CrazyGames SDK integration against a recording stand-in
 node tests/views.mjs 3 "x,y,z,yaw,pitch"   # screenshots of a spot in both styles
 ```
 

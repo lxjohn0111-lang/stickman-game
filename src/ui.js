@@ -9,6 +9,7 @@ import { PLAYER, WEAPONS } from './config.js';
 import { t } from './i18n.js';
 import { progress, levelRecord } from './save.js';
 import { campaignStats } from './mission.js';
+import { platform } from './platform.js';
 
 const $ = (sel) => document.querySelector(sel);
 const _v = new THREE.Vector3();
@@ -27,6 +28,20 @@ const CONTROLS = [
   [['W'], 'controls.climb'],
   [['V'], 'controls.style'],
   [['Esc'], 'controls.pause'],
+];
+
+const TOUCH_CONTROLS = [
+  ['touch.move', 'touch.movem'],
+  ['touch.look', 'touch.lookm'],
+  ['&#8853;', 'touch.fire'],
+  ['&#9678;', 'touch.aim'],
+  ['&#8963;', 'touch.jump'],
+  ['&#8964;', 'touch.crouch'],
+  ['&#8635;', 'touch.reload'],
+  ['&#8646;', 'touch.swap'],
+  ['&#9758;', 'touch.use'],
+  ['II', 'touch.pause'],
+  ['&#8593;', 'touch.ladder'],
 ];
 
 export function fmtTime(s) {
@@ -101,7 +116,7 @@ export class UI {
     this.overlayOn = false;
 
     this.applyTexts();
-    for (const n of document.querySelectorAll('.logo-hw')) n.appendChild(handwrite('Way through', { height: 58, stroke: 6, animate: true, delay: 0.1 }));
+    for (const n of document.querySelectorAll('.logo-hw')) n.appendChild(handwrite(t('game.title'), { height: 58, stroke: 6, animate: true, delay: 0.1 }));
     this._wireNav('#menu', '#menu-panel', (s) => { this.menuSection = s; });
     this._wireNav('#pause', '#pause-panel', (s) => { this.pauseSection = s; });
     $('#clicklock').addEventListener('click', () => this.game.resume());
@@ -334,13 +349,18 @@ export class UI {
     } else if (sec === 'controls') {
       title(t('controls.title'));
       const tb = el('table', 'keys');
-      tb.innerHTML = CONTROLS.map(([keys, what]) => `<tr><td>${keys.map((k) => `<kbd class="k">${k}</kbd>`).join('')}</td><td>${t(what)}</td></tr>`).join('');
-      panel.appendChild(tb);
-      if (g.input.fallback) panel.appendChild(el('p', 'hint', '<br>' + t('controls.fallback')));
+      if (g.touch && g.touch.active) {
+        tb.innerHTML = TOUCH_CONTROLS.map(([k, what]) => `<tr><td>${k.startsWith('touch.') ? t(k) : `<kbd class="k">${k}</kbd>`}</td><td>${t(what)}</td></tr>`).join('');
+        panel.appendChild(tb);
+      } else {
+        tb.innerHTML = CONTROLS.map(([keys, what]) => `<tr><td>${keys.map((k) => `<kbd class="k">${k}</kbd>`).join('')}</td><td>${t(what)}</td></tr>`).join('');
+        panel.appendChild(tb);
+        if (g.input.fallback) panel.appendChild(el('p', 'hint', '<br>' + t('controls.fallback')));
+      }
     } else if (sec === 'settings') {
       title(t('settings.title'));
       panel.appendChild(this._settings());
-      panel.appendChild(el('p', 'hint', '<br>' + t('settings.qualityHint') + '<br>' + t('settings.diffHint')));
+      panel.appendChild(el('p', 'hint', '<br>' + (platform.muted ? t('settings.portalMuted') + '<br>' : '') + t('settings.qualityHint') + '<br>' + t('settings.diffHint')));
     } else if (sec === 'howto') {
       title(t('howto.title'));
       panel.appendChild(el('div', '', t('howto.body')));
@@ -477,11 +497,18 @@ export class UI {
     row(t('settings.ambience'), slider('ambience', 0, 1, 0.05, pct));
     row(t('settings.difficulty'), this._seg('difficulty', [['easy', t('settings.easy')], ['normal', t('settings.normal')], ['hard', t('settings.hard')]]));
     row(t('settings.quality'), this._seg('quality', [['low', t('settings.low')], ['medium', t('settings.medium')], ['high', t('settings.high')]]));
-    const fs = el('div', 'seg');
-    const fsBtn = el('button', '', document.fullscreenElement ? t('settings.exit') : t('settings.enter'));
-    fsBtn.addEventListener('click', () => { this.click(); g.toggleFullscreen(); setTimeout(() => { fsBtn.textContent = document.fullscreenElement ? t('settings.exit') : t('settings.enter'); }, 250); });
-    fs.appendChild(fsBtn);
-    row(t('settings.fullscreen'), fs);
+    // the portal has its own fullscreen control (and forbids a custom one)
+    if (!platform.portal && document.fullscreenEnabled) {
+      const fs = el('div', 'seg');
+      const fsBtn = el('button', '', document.fullscreenElement ? t('settings.exit') : t('settings.enter'));
+      fsBtn.addEventListener('click', () => { this.click(); g.toggleFullscreen(); setTimeout(() => { fsBtn.textContent = document.fullscreenElement ? t('settings.exit') : t('settings.enter'); }, 250); });
+      fs.appendChild(fsBtn);
+      row(t('settings.fullscreen'), fs);
+    }
+    if (g.touch && g.touch.active) {
+      row(t('settings.aimAssist'), this._seg('aimAssist', onoff));
+      row(t('settings.touchSize'), slider('touchSize', 0.8, 1.3, 0.05, pct));
+    }
     row(t('settings.shake'), slider('shake', 0, 1, 0.05, pct));
     row(t('settings.viewBob'), this._seg('viewBob', onoff));
     row(t('settings.fps'), this._seg('fps', onoff));
@@ -612,6 +639,17 @@ export class UI {
 
   showOverlay() {
     const k = (s) => `<kbd class="k">${s}</kbd>`;
+    if (this.game.touch && this.game.touch.active) {
+      this.overlayEl.innerHTML = `<div class="h">${t('overlay.title')}</div><div class="grid" style="grid-template-columns:auto auto">
+        <div>${t('touch.move')}</div><div>${t('touch.movem')}</div><div>${t('touch.look')}</div><div>${t('touch.lookm')}</div>
+        <div>${k('&#8853;')}</div><div>${t('touch.fire')}</div><div>${k('&#9758;')}</div><div>${t('touch.use')}</div>
+        </div><div class="foot">${t('overlay.dismiss')}</div>`;
+      this.overlayEl.classList.remove('hidden');
+      this.overlayEl.style.opacity = '1';
+      this.overlayOn = true;
+      this.overlayShownAt = this.game.time;
+      return;
+    }
     this.overlayEl.innerHTML = `<div class="h">${t('overlay.title')}</div><div class="grid">
       <div>${k('W')}${k('A')}${k('S')}${k('D')}</div><div>${t('overlay.move')}</div><div>${k('Mouse')}</div><div>${t('overlay.look')}</div>
       <div>${k('LMB')}</div><div>${t('overlay.fire')}</div><div>${k('R')}</div><div>${t('overlay.reload')}</div>
@@ -722,7 +760,7 @@ export class UI {
           const [kind, w] = key.split(':');
           label = t(kind === 'swap' ? 'prompt.swap' : 'prompt.take', { name: t('weapon.' + w) });
         }
-        this.prompt.innerHTML = `<kbd>F</kbd> ${label}`;
+        this.prompt.innerHTML = `<kbd>${this.game.touch && this.game.touch.active ? '&#9758;' : 'F'}</kbd> ${label}`;
       }
     }
     // ---- ammo panel
@@ -769,8 +807,9 @@ export class UI {
     // ---- toasts / tips / area label
     this.toastT = Math.max(0, this.toastT - dt);
     this.toastEl.style.opacity = this.toastT > 0 ? '1' : '0';
-    this.tipT = Math.max(0, this.tipT - dt);
-    this.tipEl.style.opacity = this.tipT > 0.3 ? '1' : '0';
+    // tips wait until the controls overlay is gone
+    if (!this.overlayOn) this.tipT = Math.max(0, this.tipT - dt);
+    this.tipEl.style.opacity = this.tipT > 0.3 && !this.overlayOn ? '1' : '0';
     this.styleToastT = Math.max(0, this.styleToastT - realDt);
     this.styleToastEl.style.opacity = this.styleToastT > 0 ? '1' : '0';
     this.areaT = Math.max(0, this.areaT - dt);

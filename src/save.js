@@ -1,8 +1,9 @@
-// Campaign progress in localStorage: unlocked levels, best scores/times,
-// stars, collected secrets, achievements and Endless records. Every access is
-// guarded because storage can be unavailable (private windows, file:// quirks).
+// Campaign progress: unlocked levels, best scores/times, stars, collected
+// secrets, achievements and Endless records. Stored through the platform
+// layer: the CrazyGames data module on CrazyGames, localStorage elsewhere.
+import { store } from './platform.js';
 
-const KEY = 'waythrough.save.v2';
+const KEY = 'onewayout.save.v1';
 
 function blank() {
   return {
@@ -22,8 +23,7 @@ function blank() {
 export const progress = blank();
 
 export function loadProgress() {
-  let raw = null;
-  try { raw = window.localStorage.getItem(KEY); } catch (e) { raw = null; }
+  const raw = store.get(KEY);
   if (!raw) return progress;
   try {
     const d = JSON.parse(raw);
@@ -37,7 +37,7 @@ export function loadProgress() {
 }
 
 export function saveProgress() {
-  try { window.localStorage.setItem(KEY, JSON.stringify(progress)); } catch (e) { /* ignore */ }
+  store.set(KEY, JSON.stringify(progress));
 }
 
 export function levelRecord(n) {
