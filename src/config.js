@@ -50,6 +50,10 @@ export const ENEMY = {
 
 export const HEADSHOT_MULT = 2.5;
 
+// Footstep sound per collider surface (roof, indoor, metal, snow, outdoor).
+export const STEP_SOUNDS = { roof: 'step_roof', indoor: 'step_indoor', metal: 'step_metal', snow: 'step_snow', ice: 'step_snow', ground: 'step_ground' };
+export function stepSound(surf) { return STEP_SOUNDS[surf] || 'step_ground'; }
+
 // Weapons. slot: 'main' or 'side' (the player carries one of each).
 // interval is seconds per shot; the SMG (0.09 s) and rifle (0.125 s) cadences
 // come from the original brief's audio-peak measurements.

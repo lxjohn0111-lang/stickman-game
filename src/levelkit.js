@@ -717,7 +717,7 @@ export class LevelKit {
 
   // Interactable panel/console. o: {prompt, face, r, panel}
   interact(id, x, y, z, o = {}) {
-    const it = { id, x, y, z, r: o.r || 1.9, prompt: o.prompt || 'prompt.use', face: o.face || null, panel: o.panel !== false };
+    const it = { ...o, id, x, y, z, r: o.r || 1.9, prompt: o.prompt || 'prompt.use', face: o.face || null, panel: o.panel !== false };
     this.data.interacts.push(it);
     if (it.panel) {
       const [dx, dz] = DIRS[o.face || 's'];

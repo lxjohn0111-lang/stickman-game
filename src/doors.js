@@ -107,6 +107,15 @@ export class Door {
     if (this.group) this.group.rotation.y = -this.angle;
   }
 
+  // Snap to a saved state (checkpoint restore).
+  setState(open, locked, target) {
+    this.isOpen = open;
+    this.locked = locked;
+    this.angle = this.target = open ? target : this.closed;
+    this.moving = false;
+    if (this.group) this.group.rotation.y = -this.angle;
+  }
+
   update(dt) {
     if (!this.moving) return;
     const d = this.target - this.angle;

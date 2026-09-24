@@ -96,7 +96,6 @@ export function buildGun(id) {
     const mag = new PartBuilder();
     mag.box('gunDark', 0, -0.078, 0.028, 0.034, 0.014, 0.05, { rx: 0.25 });
     out.mag = mag;
-  }
   } else if (id === 'burst') {
     // M16-style burst rifle: carry handle, triangular front sight, long
     // barrel with a slotted flash hider, straight magazine, fixed stock

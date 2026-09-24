@@ -20,6 +20,8 @@ const ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
 export const INK = new THREE.Color(0x0d0d0d);
 export const BLOOD = new THREE.Color(0x6e0a0a);
 const BLOOD_DARK = new THREE.Color(0x4a0606);
+const GLASS_MARK = new THREE.Color(0x8a96a8);
+const GLASS_SHARD = new THREE.Color(0xc8d4e4);
 
 // Starburst built by pinching every other rim vertex of a flat cylinder.
 export function makeStarGeometry(points = 10, inner = 0.42) {
@@ -45,6 +47,8 @@ export class FX {
   constructor(scene, materials, world) {
     this.world = world;
     this.materials = materials;
+    this.inkColor = INK;
+    this.q = { particles: 1, decals: 1 }; // quality scales (never gameplay)
 
     // decals: 2x2 atlas of splat variants, chosen per instance
     const dg = new THREE.PlaneGeometry(1, 1);
@@ -107,8 +111,10 @@ export class FX {
   }
 
   decal(x, y, z, nx, ny, nz, size, color = INK, tile = -1) {
+    const cap = Math.max(40, Math.floor(MAX_DECALS * this.q.decals));
+    if (this.decalNext >= cap) this.decalNext = 0;
     const i = this.decalNext;
-    this.decalNext = (this.decalNext + 1) % MAX_DECALS;
+    this.decalNext = (this.decalNext + 1) % cap;
     this.decalTotal++;
     _n.set(nx, ny, nz).normalize();
     _q.setFromUnitVectors(Z, _n);
@@ -133,6 +139,7 @@ export class FX {
   }
 
   particle(x, y, z, vx, vy, vz, size, life, color, kind = 0) {
+    if (this.q.particles < 1 && Math.random() > this.q.particles) return;
     if (this.p.length >= MAX_PARTS) this.p.shift();
     this.p.push({ x, y, z, vx, vy, vz, s: size, life, max: life, c: color, kind, rx: Math.random() * 6, ry: Math.random() * 6, rest: false });
   }
@@ -147,6 +154,16 @@ export class FX {
       const vy = ny * sp + Math.random() * 3;
       const vz = nz * sp + (Math.random() - 0.5) * 3;
       this.particle(x + nx * 0.02, y + ny * 0.02, z + nz * 0.02, vx, vy, vz, 0.025 + Math.random() * 0.04, 0.6 + Math.random() * 0.6, INK, 0);
+    }
+  }
+
+  // Bullet through a window pane: pale crack mark and a few glinting shards.
+  glass(x, y, z, nx, ny, nz) {
+    this.decal(x, y, z, nx, ny, nz, 0.3 + Math.random() * 0.12, GLASS_MARK);
+    this.decal(x, y, z, -nx, -ny, -nz, 0.26 + Math.random() * 0.1, GLASS_MARK);
+    for (let i = 0; i < 6; i++) {
+      const sp = 1 + Math.random() * 2.5;
+      this.particle(x, y, z, -nx * sp + (Math.random() - 0.5) * 2, Math.random() * 1.5, -nz * sp + (Math.random() - 0.5) * 2, 0.02 + Math.random() * 0.03, 0.7, GLASS_SHARD, 0);
     }
   }
 

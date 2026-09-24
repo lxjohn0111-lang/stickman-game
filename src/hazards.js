@@ -62,6 +62,14 @@ export class Hazards {
     this.lifts = d.lifts.map((l) => ({ ...l, y: l.y0, target: l.y0, moving: false }));
     this.panels = d.interacts.filter((i) => i.light).map((i) => ({ it: i, state: 'off' }));
     this.destructibles = d.destructibles.map((x) => ({ ...x, maxHp: x.hp, dead: false }));
+    // back to the level's starting state (restarts reuse the built level)
+    for (const x of this.destructibles) {
+      x.group.visible = true; x.group.position.y = 0;
+      if (x.wreck) x.wreck.visible = false;
+      x.col.f = SOLID;
+    }
+    for (const l of this.lifts) { l.col.y1 = l.y0; l.col.y0 = l.y0 - 0.3; l.group.position.y = 0; }
+    for (const p of this.presses) { p.state = 'up'; this.setPress(p); }
     this.flicker = level.def.env.flicker ? { on: true } : null;
     this.beltTex = level.beltTex || null;
   }
@@ -131,7 +139,7 @@ export class Hazards {
     this.lightList.length = 0;
     // conveyor belts: texture scroll (one shared material)
     this.beltOffset = (this.beltOffset + dt * 1.6 / 1.2) % 1;
-    if (this.beltTex) this.beltTex.offset.y = -this.beltOffset;
+    if (this.beltTex && this.conveyors.some((c) => c.conv.on)) this.beltTex.offset.y = -this.beltOffset;
     // steam vents: idle -> warn (1.1 s) -> burst (1.2 s)
     for (const v of this.vents) {
       if (v.off) continue;
@@ -261,11 +269,20 @@ export class Hazards {
   }
 
   save() {
-    return { destroyed: this.destructibles.filter((x) => x.dead).map((x) => x.id), lifts: this.lifts.map((l) => [l.id, l.target]), off: this.presses.map((p) => !!p.off).concat(this.vents.map((v) => !!v.off)) };
+    return { belts: this.conveyors.map((c) => c.conv.on), panels: this.panels.map((p) => p.state), destroyed: this.destructibles.filter((x) => x.dead).map((x) => x.id), lifts: this.lifts.map((l) => [l.id, l.target]), off: this.presses.map((p) => !!p.off).concat(this.vents.map((v) => !!v.off)) };
   }
 
   restore(s) {
-    this.restoreDestroyed(s.destroyed);
+    for (const x of this.destructibles) {
+      if (s.destroyed.includes(x.id)) { if (!x.dead) this.destroy(x, true); continue; }
+      x.dead = false; x.hp = x.maxHp; x.flash = 0;
+      x.group.visible = true; x.group.position.y = 0;
+      if (x.wreck) x.wreck.visible = false;
+      x.col.f = SOLID;
+    }
+    if (s.belts) this.conveyors.forEach((c, i) => { c.conv.on = s.belts[i]; });
+    if (s.panels) this.panels.forEach((p, i) => { p.state = s.panels[i]; });
+    this.puffs.length = 0;
     for (const [id, y] of s.lifts) { const l = this.lift(id); if (l) { l.y = l.target = y; l.col.y1 = y; l.col.y0 = y - 0.3; l.group.position.y = y - l.y0; } }
     let i = 0;
     for (const p of this.presses) p.off = s.off[i++];

@@ -29,6 +29,7 @@ export class Input {
     this.lastX = null;
     this.lastY = null;
     this.ignoreNext = 0;
+    this.wheel = 0;
 
     window.addEventListener('keydown', (e) => {
       if (e.repeat) { if (this.capture && ['Space', 'Tab'].includes(e.code)) e.preventDefault(); return; }
@@ -38,7 +39,7 @@ export class Input {
       if (this.onKey) this.onKey(e.code, e);
     });
     window.addEventListener('keyup', (e) => { this.keys[e.code] = false; });
-    window.addEventListener('blur', () => { this.keys = Object.create(null); this.left = this.right = false; });
+    window.addEventListener('blur', () => this.releaseAll());
     canvas.addEventListener('mousedown', (e) => this._down(e));
     window.addEventListener('mousedown', (e) => { if (this.locked && e.target !== canvas) this._down(e); });
     window.addEventListener('mouseup', (e) => {
@@ -47,6 +48,7 @@ export class Input {
     });
     window.addEventListener('contextmenu', (e) => { if (this.capture || this.locked) e.preventDefault(); });
     window.addEventListener('mousemove', (e) => this._move(e));
+    window.addEventListener('wheel', (e) => { if (this.capture && Math.abs(e.deltaY) > 1) this.wheel += Math.sign(e.deltaY); }, { passive: true });
     document.addEventListener('pointerlockchange', () => {
       const locked = document.pointerLockElement === canvas;
       if (locked === this.locked) return;
@@ -122,7 +124,11 @@ export class Input {
   endFrame() {
     this.pressed = Object.create(null);
     this.leftPressed = false;
+    this.wheel = 0;
   }
+
+  // Forget held keys/buttons (focus loss, pause).
+  releaseAll() { this.keys = Object.create(null); this.left = this.right = false; }
 
   down(code) { return !!this.keys[code]; }
   hit(code) { return !!this.pressed[code]; }

@@ -13,19 +13,20 @@
     --line: 1px solid #111;
     --line-strong: 2px solid #111;
     --shadow: none;
-    --btn: #fff;
-    --btn-ink: #111;
-    --btn-hover: #111;
-    --btn-hover-ink: #fff;
     --accent: #111;
     --accent-2: #111;
     --accent-3: #111;
     --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
     --sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
     --title-font: var(--mono);
-    --radius: 0px;
     --pill-bg: #fff;
     --dot: #111;
+    --hp-ok: #2e6b35;
+    --hp-mid: #a07800;
+    --hp-low: #7a0c0c;
+    --hp-trail: #d98c8c;
+    --hp-bg: #fff;
+    --speed: .16s;
   }
   body.style-neo {
     --ink: #000;
@@ -35,17 +36,17 @@
     --line: 3px solid #000;
     --line-strong: 3px solid #000;
     --shadow: 6px 6px 0 #000;
-    --btn: #ffe600;
-    --btn-ink: #000;
-    --btn-hover: #ff5fa2;
-    --btn-hover-ink: #000;
     --accent: #ffe600;
     --accent-2: #ff5fa2;
     --accent-3: #3de0ff;
     --title-font: "Arial Black", "Helvetica Neue", Arial, sans-serif;
-    --radius: 0px;
     --pill-bg: #ffe600;
     --dot: #ffe600;
+    --hp-ok: #2dff7a;
+    --hp-mid: #ffe600;
+    --hp-low: #ff2d3d;
+    --hp-trail: #ffffff;
+    --hp-bg: #3a3a3a;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; overflow: hidden; background: #fff; color: var(--ink); font-family: var(--mono); }
@@ -55,64 +56,145 @@
   body.fallback-look.playing canvas#game { cursor: crosshair; }
   .hidden { display: none !important; }
   button { font: inherit; color: inherit; }
+  @keyframes fadein { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
+  @keyframes pop { 0% { transform: translateX(-50%) scale(.85); opacity: 0; } 20% { transform: translateX(-50%) scale(1.05); opacity: 1; } 30% { transform: translateX(-50%) scale(1); } 100% { transform: translateX(-50%) scale(1); opacity: 1; } }
 
   /* ---------------- HUD ---------------- */
   #hud { position: fixed; inset: 0; pointer-events: none; }
-  #vignette { position: absolute; inset: 0; opacity: 0; background: radial-gradient(ellipse at center, rgba(0,0,0,0) 38%, rgba(20,0,0,.55) 70%, rgba(0,0,0,.92) 100%); transition: opacity .15s linear; }
+  #vignette { position: absolute; inset: 0; opacity: 0; background: radial-gradient(ellipse at center, rgba(0,0,0,0) 45%, rgba(40,0,0,.45) 78%, rgba(20,0,0,.8) 100%); transition: opacity .2s linear; }
+  #healflash { position: absolute; inset: 0; opacity: 0; background: radial-gradient(ellipse at center, rgba(0,0,0,0) 55%, rgba(40,200,90,.35) 100%); transition: opacity .5s; }
   .edge { position: absolute; opacity: 0; }
-  #edge-top { left: 0; right: 0; top: 0; height: 26%; background: linear-gradient(to bottom, rgba(0,0,0,.8), rgba(0,0,0,0)); }
-  #edge-bottom { left: 0; right: 0; bottom: 0; height: 26%; background: linear-gradient(to top, rgba(0,0,0,.8), rgba(0,0,0,0)); }
-  #edge-left { top: 0; bottom: 0; left: 0; width: 22%; background: linear-gradient(to right, rgba(0,0,0,.8), rgba(0,0,0,0)); }
-  #edge-right { top: 0; bottom: 0; right: 0; width: 22%; background: linear-gradient(to left, rgba(0,0,0,.8), rgba(0,0,0,0)); }
+  #edge-top { left: 0; right: 0; top: 0; height: 24%; background: linear-gradient(to bottom, rgba(110,0,0,.85), rgba(110,0,0,0)); }
+  #edge-bottom { left: 0; right: 0; bottom: 0; height: 24%; background: linear-gradient(to top, rgba(110,0,0,.85), rgba(110,0,0,0)); }
+  #edge-left { top: 0; bottom: 0; left: 0; width: 20%; background: linear-gradient(to right, rgba(110,0,0,.85), rgba(110,0,0,0)); }
+  #edge-right { top: 0; bottom: 0; right: 0; width: 20%; background: linear-gradient(to left, rgba(110,0,0,.85), rgba(110,0,0,0)); }
   #crosshair { position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px 0 0 -2px; border-radius: 50%; background: var(--dot); box-shadow: 0 0 0 1px rgba(255,255,255,.9); }
   body.style-neo #crosshair { width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; box-shadow: 0 0 0 2px #000; }
   #hitmarker { position: absolute; left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; opacity: 0; }
   #hitmarker::before, #hitmarker::after { content: ""; position: absolute; left: 50%; top: 0; width: 1.5px; height: 100%; margin-left: -.75px; background: linear-gradient(to bottom, #111 0 30%, transparent 30% 70%, #111 70% 100%); }
   #hitmarker::before { transform: rotate(45deg); } #hitmarker::after { transform: rotate(-45deg); }
   #hitmarker.head::before, #hitmarker.head::after { background: linear-gradient(to bottom, #7a0c0c 0 32%, transparent 32% 68%, #7a0c0c 68% 100%); }
+  #hitmarker.kill { width: 30px; height: 30px; margin: -15px 0 0 -15px; }
   body.style-neo #hitmarker::before, body.style-neo #hitmarker::after { width: 3px; margin-left: -1.5px; }
   #prompt { position: absolute; left: 50%; top: 57%; transform: translateX(-50%); padding: 4px 11px 4px 5px; border: var(--line); border-radius: 999px; background: var(--pill-bg); font-size: 12px; letter-spacing: .04em; white-space: nowrap; box-shadow: var(--shadow); display: flex; align-items: center; gap: 7px; }
   body.style-neo #prompt { box-shadow: 3px 3px 0 #000; font-family: var(--sans); font-weight: 800; }
-  #prompt kbd { display: inline-block; min-width: 18px; padding: 1px 5px; border: var(--line); border-radius: 999px; font: inherit; font-weight: 700; text-align: center; background: var(--paper); }
-  #prompt .bracket { font-weight: 700; }
+  #prompt kbd, .kk { display: inline-block; min-width: 18px; padding: 1px 5px; border: var(--line); border-radius: 999px; font: inherit; font-weight: 700; text-align: center; background: var(--paper); }
+  #prompt.locked { opacity: .75; }
   #hitdir { position: absolute; left: 50%; top: 67%; transform: translateX(-50%); text-align: center; font-family: var(--mono); font-size: 11px; letter-spacing: .28em; text-transform: uppercase; opacity: 0; color: #111; text-shadow: 0 0 3px #fff, 0 0 6px #fff; }
-  #hitdir .rule { width: 120px; height: 1px; background: #111; margin: 0 auto 6px; box-shadow: 0 0 2px #fff; }
+  #hitdir .rule { width: 120px; height: 1px; background: #7a0c0c; margin: 0 auto 6px; box-shadow: 0 0 2px #fff; }
   body.style-neo #hitdir { font-weight: 700; color: #000; text-shadow: none; background: #fff; border: 3px solid #000; padding: 4px 10px; box-shadow: 3px 3px 0 #000; }
-  body.style-neo #hitdir .rule { height: 3px; background: #ff2bd6; box-shadow: none; }
-  #ammo { position: absolute; right: 28px; bottom: 24px; font-family: var(--mono); font-size: 13px; text-align: right; letter-spacing: .06em; color: #111; text-shadow: 0 0 3px #fff; }
-  #ammo .mag { font-size: 22px; }
-  #ammo .wname { display: block; font-size: 10px; letter-spacing: .25em; text-transform: uppercase; color: var(--muted); }
-  body.style-neo #ammo { background: #fff; border: 3px solid #000; padding: 6px 10px; box-shadow: 4px 4px 0 #000; font-weight: 800; text-shadow: none; }
-  #fps { position: absolute; left: 10px; top: 8px; font-size: 11px; font-family: var(--mono); color: #111; text-shadow: 0 0 3px #fff; }
+  body.style-neo #hitdir .rule { height: 3px; background: #ff2d3d; box-shadow: none; }
+
+  /* health + ammo, lower left */
+  #status { position: absolute; left: 22px; bottom: 20px; display: flex; align-items: flex-end; gap: 12px; }
+  #health { width: 250px; }
+  #health .lbl { display: flex; justify-content: space-between; font-size: 10px; letter-spacing: .25em; text-transform: uppercase; margin-bottom: 4px; color: #111; text-shadow: 0 0 3px #fff, 0 0 3px #fff; }
+  #health .num { font-size: 13px; letter-spacing: .06em; font-weight: 700; }
+  #hpbar { position: relative; height: 16px; background: var(--hp-bg); border: 1.5px solid #111; overflow: hidden; }
+  #hpbar .cap { position: absolute; top: 0; bottom: 0; border-left: 1.5px dashed rgba(0,0,0,.45); }
+  #hptrail, #hpfill { position: absolute; left: 0; top: 0; bottom: 0; }
+  #hptrail { background: var(--hp-trail); }
+  #hpfill { background: var(--hp-ok); transition: background-color .25s; }
+  #health.mid #hpfill { background: var(--hp-mid); }
+  #health.low #hpfill { background: var(--hp-low); animation: pulse 1s ease-in-out infinite; }
+  #health.low .num { color: #7a0c0c; }
+  body.style-neo #health .lbl { font-family: var(--sans); font-weight: 900; color: #000; text-shadow: none; }
+  body.style-neo #health { background: #fff; border: 3px solid #000; padding: 6px 8px 8px; box-shadow: 5px 5px 0 #000; }
+  body.style-neo #hpbar { border: 3px solid #000; height: 18px; }
+  body.style-neo #health.low .num { color: #ff2d3d; }
+  #ammo { min-width: 150px; font-size: 12px; color: #111; text-shadow: 0 0 3px #fff, 0 0 3px #fff; }
+  #ammo .slots { display: flex; gap: 6px; margin-bottom: 4px; font-size: 9px; letter-spacing: .12em; text-transform: uppercase; }
+  #ammo .slot { padding: 1px 5px; border: 1px solid rgba(0,0,0,.35); color: var(--muted); background: rgba(255,255,255,.7); text-shadow: none; }
+  #ammo .slot.on { border-color: #111; color: #111; background: #fff; font-weight: 700; }
+  #ammo .count { font-size: 12px; letter-spacing: .06em; }
+  #ammo .mag { font-size: 24px; font-weight: 700; }
+  #ammo .reload { height: 3px; background: rgba(0,0,0,.15); margin-top: 3px; }
+  #ammo .reload i { display: block; height: 100%; width: 0; background: #111; }
+  #ammo.empty .mag { color: #7a0c0c; }
+  body.style-neo #ammo { background: #fff; border: 3px solid #000; padding: 6px 10px; box-shadow: 5px 5px 0 #000; font-family: var(--sans); font-weight: 800; text-shadow: none; }
+  body.style-neo #ammo .slot { border: 2px solid #000; color: #000; background: #fff; }
+  body.style-neo #ammo .slot.on { background: var(--accent); }
+  body.style-neo #ammo .reload i { background: #ff2bd6; }
+
+  /* objective, marker, score */
+  #objective { position: absolute; left: 22px; top: 18px; max-width: 360px; font-size: 12px; line-height: 1.4; color: #111; text-shadow: 0 0 3px #fff, 0 0 5px #fff; }
+  #objective .h { font-size: 9px; letter-spacing: .32em; text-transform: uppercase; color: var(--muted); }
+  #objective .txt { font-weight: 700; letter-spacing: .03em; }
+  #objective.flash .txt { animation: pulse .5s ease-in-out 3; }
+  #objective .timer { margin-top: 4px; font-size: 18px; font-weight: 700; }
+  body.style-neo #objective { background: #fff; border: 3px solid #000; padding: 6px 10px; box-shadow: 4px 4px 0 #000; font-family: var(--sans); text-shadow: none; }
+  body.style-neo #objective .h { color: #000; font-weight: 900; }
+  #marker { position: absolute; left: 0; top: 0; width: 0; height: 0; }
+  #marker .dia { position: absolute; left: -8px; top: -8px; width: 16px; height: 16px; transform: rotate(45deg); border: 2px solid #111; background: rgba(255,255,255,.85); }
+  #marker .dist { position: absolute; left: -30px; top: 12px; width: 60px; text-align: center; font-size: 10px; letter-spacing: .1em; color: #111; text-shadow: 0 0 3px #fff, 0 0 3px #fff; }
+  body.style-neo #marker .dia { border: 3px solid #000; background: #ff2bd6; box-shadow: 2px 2px 0 #000; }
+  body.style-neo #marker .dist { font-family: var(--sans); font-weight: 900; color: #000; text-shadow: 0 0 2px #fff, 0 0 2px #fff; }
+  #scorebox { position: absolute; right: 22px; top: 18px; text-align: right; font-size: 11px; letter-spacing: .12em; color: #111; text-shadow: 0 0 3px #fff; }
+  #scorebox .sc { font-size: 18px; font-weight: 700; }
+  #scorebox .combo { color: #7a0c0c; font-weight: 700; opacity: 0; transition: opacity .2s; }
+  #scorebox .combo.on { opacity: 1; }
+  #scorebox .feed { height: 16px; color: var(--muted); }
+  body.style-neo #scorebox { background: #fff; border: 3px solid #000; padding: 5px 10px; box-shadow: 4px 4px 0 #000; font-family: var(--sans); font-weight: 800; text-shadow: none; }
+  body.style-neo #scorebox .combo { color: #ff2bd6; }
+  #bossbar { position: absolute; left: 50%; top: 18px; transform: translateX(-50%); width: min(420px, 50vw); text-align: center; font-size: 10px; letter-spacing: .3em; text-transform: uppercase; color: #111; text-shadow: 0 0 3px #fff; }
+  #bossbar .bar { height: 10px; border: 1.5px solid #111; background: #fff; margin-top: 4px; }
+  #bossbar .bar i { display: block; height: 100%; background: #7a0c0c; transition: width .2s; }
+  body.style-neo #bossbar { font-family: var(--sans); font-weight: 900; }
+  body.style-neo #bossbar .bar { border: 3px solid #000; height: 14px; box-shadow: 3px 3px 0 #000; }
+  body.style-neo #bossbar .bar i { background: #ff2d3d; }
+
+  #fps { position: absolute; right: 22px; bottom: 8px; font-size: 10px; font-family: var(--mono); color: #111; text-shadow: 0 0 3px #fff; }
   #area { position: absolute; left: 50%; top: 22px; transform: translateX(-50%); font-family: var(--mono); font-size: 11px; letter-spacing: .32em; text-transform: uppercase; opacity: 0; transition: opacity .6s; text-align: center; color: #111; text-shadow: 0 0 4px #fff; }
   #area .rule { width: 60px; height: 1px; background: #111; margin: 0 auto 5px; }
   body.style-neo #area { background: #fff; border: 3px solid #000; padding: 4px 10px; font-weight: 800; box-shadow: 3px 3px 0 #000; text-shadow: none; }
   body.style-neo #area .rule { display: none; }
-  #toast { position: absolute; left: 50%; bottom: 16%; transform: translateX(-50%); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; opacity: 0; transition: opacity .3s; padding: 5px 12px; background: var(--panel); border: var(--line); box-shadow: var(--shadow); }
+  #toast { position: absolute; left: 50%; bottom: 17%; transform: translateX(-50%); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; opacity: 0; transition: opacity .3s; padding: 5px 12px; background: var(--panel); border: var(--line); box-shadow: var(--shadow); white-space: nowrap; }
+  #toast.secret { border-color: #b08a00; }
   body.style-neo #toast { font-family: var(--sans); font-weight: 800; box-shadow: 3px 3px 0 #000; }
-  body.is-dead #crosshair, body.is-dead #prompt, body.is-dead #hitmarker, body.is-dead #ammo, body.is-dead #toast { display: none; }
-  #fade { position: fixed; inset: 0; pointer-events: none; opacity: 0; background: #d9d9d9; }
+  body.style-neo #toast.secret { background: #ffd23f; }
+  #tip { position: absolute; left: 50%; bottom: 23%; transform: translateX(-50%); max-width: 520px; font-size: 12px; line-height: 1.45; text-align: center; padding: 7px 14px; background: rgba(255,255,255,.92); border: var(--line); opacity: 0; transition: opacity .4s; }
+  body.style-neo #tip { background: var(--accent-3); font-family: var(--sans); font-weight: 700; box-shadow: 4px 4px 0 #000; }
+  #cpnote { position: absolute; left: 50%; top: 30%; transform: translateX(-50%); font-size: 13px; letter-spacing: .5em; text-transform: uppercase; padding: 7px 18px 7px 24px; border-top: 1px solid #111; border-bottom: 1px solid #111; background: rgba(255,255,255,.9); }
+  #cpnote.show { animation: pop 1.8s ease-out both; }
+  body.style-neo #cpnote { border: 3px solid #000; background: #2dff7a; font-family: var(--sans); font-weight: 900; box-shadow: 4px 4px 0 #000; }
+  #overlay { position: absolute; left: 50%; bottom: 25%; transform: translateX(-50%); padding: 12px 18px; background: rgba(255,255,255,.94); border: var(--line); box-shadow: var(--shadow); font-size: 12px; transition: opacity .4s; }
+  #overlay .grid { display: grid; grid-template-columns: repeat(4, auto); gap: 6px 18px; align-items: center; }
+  #overlay .grid div { white-space: nowrap; }
+  #overlay .h { font-size: 10px; letter-spacing: .3em; text-transform: uppercase; margin-bottom: 8px; color: var(--muted); }
+  #overlay .foot { margin-top: 10px; text-align: center; font-size: 11px; letter-spacing: .2em; text-transform: uppercase; animation: pulse 1.6s ease-in-out infinite; }
+  body.style-neo #overlay { font-family: var(--sans); font-weight: 700; }
+  #perf { position: absolute; left: 50%; top: 12px; transform: translateX(-50%); font-size: 11px; padding: 5px 12px; background: #fff; border: var(--line); }
+  body.style-neo #perf { background: var(--accent); font-family: var(--sans); font-weight: 800; box-shadow: 3px 3px 0 #000; }
+  body.is-dead #crosshair, body.is-dead #prompt, body.is-dead #hitmarker, body.is-dead #toast, body.is-dead #marker, body.is-dead #overlay, body.is-dead #tip { display: none; }
+  #fade { position: fixed; inset: 0; pointer-events: none; opacity: 0; background: #d9d9d9; transition: opacity .25s; }
 
   /* ---------------- screens ---------------- */
-  .screen { position: fixed; inset: 0; display: flex; }
+  .screen { position: fixed; inset: 0; display: flex; animation: fadein var(--speed) ease-out both; }
   #menu, #pause { align-items: stretch; justify-content: flex-start; padding: 5vh 5vw; gap: 3vw; }
   #pause { background: rgba(255,255,255,.55); }
   body.style-neo #pause { background: rgba(255,95,162,.25); }
-  .menu-left { display: flex; flex-direction: column; gap: 18px; min-width: 250px; max-width: 290px; }
+  .menu-left { display: flex; flex-direction: column; gap: 16px; min-width: 250px; max-width: 300px; }
   .logo { padding: 6px 0 2px; }
   .logo .sub { font-size: 11px; letter-spacing: .3em; text-transform: uppercase; color: var(--muted); margin-top: 2px; }
   body.style-neo .logo { background: var(--panel); border: var(--line); box-shadow: var(--shadow); padding: 12px 14px 10px; }
   nav.menu-nav { display: flex; flex-direction: column; gap: 6px; }
-  nav.menu-nav button { all: unset; cursor: pointer; font-family: var(--mono); font-size: 14px; letter-spacing: .22em; text-transform: uppercase; padding: 9px 12px; border: 1px solid transparent; background: rgba(255,255,255,.72); }
+  nav.menu-nav button, .btn { all: unset; cursor: pointer; font-family: var(--mono); font-size: 13px; letter-spacing: .2em; text-transform: uppercase; padding: 8px 12px; border: 1px solid transparent; background: rgba(255,255,255,.72); transition: background var(--speed), transform var(--speed), box-shadow var(--speed); }
   nav.menu-nav button:hover, nav.menu-nav button:focus-visible { border: var(--line); background: #fff; }
+  nav.menu-nav button:active, .btn:active { transform: translate(1px, 1px); }
+  nav.menu-nav button:focus-visible, .btn:focus-visible, .lcard:focus-visible, .style-card:focus-visible { outline: 2px dashed #111; outline-offset: 2px; }
   nav.menu-nav button.active { border: var(--line); background: #fff; box-shadow: inset 3px 0 0 #111; }
-  nav.menu-nav button.primary { background: #111; color: #fff; border: 3px double #fff; outline: 1px solid #111; }
-  nav.menu-nav button.primary:hover { background: #333; }
-  body.style-neo nav.menu-nav button { font-family: var(--sans); font-weight: 900; letter-spacing: .08em; border: var(--line); background: #fff; box-shadow: 4px 4px 0 #000; }
-  body.style-neo nav.menu-nav button:hover { background: var(--accent-3); transform: translate(-1px,-1px); box-shadow: 5px 5px 0 #000; }
-  body.style-neo nav.menu-nav button.active { background: var(--accent); box-shadow: 4px 4px 0 #000; }
+  nav.menu-nav button.primary { background: #111; color: #fff; border: 3px double #fff; outline: 1px solid #111; padding: 12px 14px; font-size: 16px; }
+  nav.menu-nav button.primary small { display: block; font-size: 10px; letter-spacing: .12em; margin-top: 3px; opacity: .8; text-transform: none; }
+  nav.menu-nav button.primary:hover, nav.menu-nav button.primary:focus-visible { background: #333; }
+  body.style-neo nav.menu-nav button, body.style-neo .btn { font-family: var(--sans); font-weight: 900; letter-spacing: .08em; border: var(--line); background: #fff; box-shadow: 4px 4px 0 #000; }
+  body.style-neo nav.menu-nav button:hover, body.style-neo nav.menu-nav button:focus-visible, body.style-neo .btn:hover, body.style-neo .btn:focus-visible { background: var(--accent-3); transform: translate(-1px,-1px); box-shadow: 5px 5px 0 #000; outline: none; }
+  body.style-neo nav.menu-nav button:active, body.style-neo .btn:active { transform: translate(3px,3px); box-shadow: 1px 1px 0 #000; }
+  body.style-neo nav.menu-nav button.active { background: var(--accent); }
   body.style-neo nav.menu-nav button.primary { background: var(--accent-2); color: #000; outline: none; }
-  .panel { flex: 1; max-width: 720px; align-self: flex-start; max-height: 90vh; overflow: auto; background: var(--panel); border: var(--line); box-shadow: var(--shadow); padding: 22px 26px; font-size: 13px; line-height: 1.55; }
+  body.style-neo nav.menu-nav button.primary:hover { background: var(--accent); }
+  nav.menu-nav button.locked { opacity: .5; }
+  .panel { flex: 1; max-width: 860px; align-self: flex-start; max-height: 90vh; overflow: auto; background: var(--panel); border: var(--line); box-shadow: var(--shadow); padding: 22px 26px; font-size: 13px; line-height: 1.55; animation: fadein var(--speed) ease-out both; }
   .panel h2 { margin: 0 0 14px; font-family: var(--mono); font-size: 12px; font-weight: 700; letter-spacing: .32em; text-transform: uppercase; border-bottom: var(--line); padding-bottom: 8px; }
   body.style-neo .panel h2 { font-family: var(--title-font); font-size: 18px; letter-spacing: .05em; background: var(--accent); margin: -22px -26px 16px; padding: 12px 26px; border-bottom: var(--line); }
   .panel p { margin: 0 0 10px; }
@@ -123,23 +205,45 @@
   kbd.k { display: inline-block; padding: 1px 6px; border: var(--line); font: inherit; font-size: 11px; margin-right: 3px; background: #fff; }
   body.style-neo kbd.k { box-shadow: 2px 2px 0 #000; border-width: 2px; font-weight: 800; }
   .styles { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
-  .style-card { all: unset; cursor: pointer; display: block; border: var(--line); background: #fff; box-shadow: var(--shadow); }
-  .style-card img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-bottom: var(--line); background: #eee; }
+  .style-card, .lcard { all: unset; cursor: pointer; display: block; border: var(--line); background: #fff; box-shadow: var(--shadow); transition: transform var(--speed), box-shadow var(--speed); }
+  .style-card:hover, .lcard:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,.15); }
+  body.style-neo .style-card:hover, body.style-neo .lcard:hover { transform: translate(-2px,-2px); box-shadow: 8px 8px 0 #000; }
+  .style-card img, .lcard .pv { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-bottom: var(--line); background: #eee; }
   .style-card .t { padding: 8px 10px 2px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; font-size: 12px; }
   .style-card .d { padding: 0 10px 10px; font-size: 11px; color: var(--muted); }
   .style-card.selected { outline: 3px solid #111; outline-offset: 3px; }
   body.style-neo .style-card.selected { outline: 4px solid #ff2bd6; }
+  .levels { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; }
+  .lcard .pvwrap { position: relative; }
+  .lcard .pv.pending { background: repeating-linear-gradient(45deg, #f2f2f2 0 8px, #fff 8px 16px); }
+  .lcard .num { position: absolute; left: 6px; top: 6px; padding: 1px 6px; background: #111; color: #fff; font-size: 11px; font-weight: 700; }
+  body.style-neo .lcard .num { background: var(--accent); color: #000; border: 2px solid #000; font-family: var(--sans); font-weight: 900; }
+  .lcard .info { padding: 7px 9px 9px; }
+  .lcard .nm { font-weight: 700; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; }
+  .lcard .row { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .lcard .stars { font-size: 15px; letter-spacing: 2px; color: #111; }
+  .lcard .stars .off { color: #ccc; }
+  body.style-neo .lcard .stars { color: #ff9a00; -webkit-text-stroke: 1px #000; }
+  body.style-neo .lcard .stars .off { color: #fff; }
+  .lcard.locked { cursor: not-allowed; }
+  .lcard.locked .pv { filter: grayscale(1) contrast(.6) brightness(1.2); }
+  .lcard.locked .info { color: var(--muted); }
+  .lcard.next { outline: 2px solid #111; outline-offset: 2px; }
+  body.style-neo .lcard.next { outline: 4px solid #ff2bd6; }
+  .toprow { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
   .settings { display: grid; grid-template-columns: 1fr 1.2fr; gap: 10px 18px; align-items: center; }
   .settings label { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
-  .settings .val { font-size: 11px; color: var(--muted); margin-left: 6px; }
+  .settings .val { font-size: 11px; color: var(--muted); margin-left: 6px; min-width: 40px; }
   .settings input[type=range] { width: 100%; accent-color: #111; }
   body.style-neo .settings input[type=range] { accent-color: #ff2bd6; }
   .seg { display: inline-flex; border: var(--line); }
-  .seg button { all: unset; cursor: pointer; padding: 3px 10px; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; border-right: var(--line); }
+  .seg button { all: unset; cursor: pointer; padding: 3px 10px; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; border-right: var(--line); transition: background var(--speed); }
+  .seg button:hover, .seg button:focus-visible { background: #eee; }
   .seg button:last-child { border-right: none; }
   .seg button.on { background: #111; color: #fff; }
   body.style-neo .seg { box-shadow: 3px 3px 0 #000; }
   body.style-neo .seg button { font-family: var(--sans); font-weight: 800; }
+  body.style-neo .seg button:hover { background: var(--accent-3); }
   body.style-neo .seg button.on { background: var(--accent); color: #000; }
   .mission { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
   .mission canvas { width: 100%; border: var(--line); background: #fff; }
@@ -147,30 +251,61 @@
   .route li { padding: 4px 0; border-bottom: 1px dotted #999; font-size: 12px; }
   .route li.done { color: var(--muted); text-decoration: line-through; }
   .route li.now { font-weight: 700; }
+  .ach { display: grid; gap: 10px; }
+  .ach .a { display: flex; gap: 12px; align-items: center; padding: 8px 10px; border: var(--line); }
+  .ach .a .ic { width: 28px; height: 28px; border: var(--line); display: grid; place-items: center; font-weight: 700; }
+  .ach .a.got .ic { background: #111; color: #fff; }
+  body.style-neo .ach .a { box-shadow: 3px 3px 0 #000; background: #fff; }
+  body.style-neo .ach .a.got { background: var(--accent); }
+  .ach .a .nm { font-weight: 700; letter-spacing: .1em; text-transform: uppercase; font-size: 12px; }
+  .ach .a .d { font-size: 11px; color: var(--muted); }
 
   /* ---------------- cards ---------------- */
-  .card-screen { align-items: center; justify-content: center; }
-  .card { background: #fff; color: #111; border: 1px solid #111; padding: 30px 40px 26px; min-width: 360px; max-width: 92vw; text-align: center; box-shadow: 0 18px 60px rgba(0,0,0,.25); }
+  .card-screen { align-items: center; justify-content: center; background: rgba(255,255,255,.35); }
+  body.style-neo .card-screen { background: rgba(0,0,0,.18); }
+  .card { background: #fff; color: #111; border: 1px solid #111; padding: 28px 38px 24px; min-width: 380px; max-width: 92vw; max-height: 94vh; overflow: auto; text-align: center; box-shadow: 0 18px 60px rgba(0,0,0,.25); animation: fadein .2s ease-out both; }
   body.style-neo .card { border: 3px solid #000; box-shadow: 10px 10px 0 #000; background: var(--paper); }
-  .card .title { margin: 4px 0 18px; }
-  .btn-try { all: unset; cursor: pointer; display: inline-block; padding: 10px 30px; background: #111; color: #fff; font-family: var(--mono); font-size: 13px; letter-spacing: .28em; text-transform: uppercase; border: 3px double #fff; outline: 2px solid #111; }
-  .btn-try:hover, .btn-try:focus-visible { background: #2a2a2a; }
+  .card .title { margin: 4px 0 14px; }
+  .card .kicker { font-size: 11px; letter-spacing: .32em; text-transform: uppercase; color: var(--muted); }
+  .card .lname { font-size: 22px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; margin: 4px 0 2px; }
+  body.style-neo .card .lname { font-family: var(--title-font); }
+  .card .place { font-size: 12px; color: var(--muted); margin-bottom: 14px; }
+  .card .goal { max-width: 440px; margin: 0 auto 12px; font-size: 13px; line-height: 1.5; text-align: left; border-left: 3px solid #111; padding-left: 10px; }
+  body.style-neo .card .goal { border-left: 6px solid #ff2bd6; }
+  .card .reminder { font-size: 11px; color: var(--muted); letter-spacing: .06em; margin: 10px 0 16px; }
+  .progress { width: 300px; height: 8px; border: var(--line); margin: 10px auto 16px; }
+  .progress i { display: block; height: 100%; width: 0; background: #111; transition: width .1s; }
+  body.style-neo .progress i { background: #ff2bd6; }
+  .btn-try { all: unset; cursor: pointer; display: inline-block; padding: 10px 28px; background: #111; color: #fff; font-family: var(--mono); font-size: 13px; letter-spacing: .24em; text-transform: uppercase; border: 3px double #fff; outline: 2px solid #111; margin: 4px; transition: background var(--speed), transform var(--speed), box-shadow var(--speed); }
+  .btn-try:hover, .btn-try:focus-visible { background: #3a3a3a; }
+  .btn-try:active { transform: translate(1px, 1px); }
+  .btn-try[disabled] { opacity: .35; cursor: default; }
   body.style-neo .btn-try { background: #ff5fa2; color: #000; border: 3px solid #000; outline: none; box-shadow: 5px 5px 0 #000; font-family: var(--sans); font-weight: 900; }
-  body.style-neo .btn-try:hover { background: #ffe600; }
-  .btn-ghost { all: unset; cursor: pointer; display: inline-block; padding: 8px 18px; border: var(--line); font-size: 12px; letter-spacing: .2em; text-transform: uppercase; margin-left: 10px; }
+  body.style-neo .btn-try:hover, body.style-neo .btn-try:focus-visible { background: #ffe600; transform: translate(-1px,-1px); box-shadow: 6px 6px 0 #000; }
+  body.style-neo .btn-try:active { transform: translate(3px,3px); box-shadow: 2px 2px 0 #000; }
+  .btn-ghost { all: unset; cursor: pointer; display: inline-block; padding: 8px 16px; border: var(--line); font-size: 12px; letter-spacing: .18em; text-transform: uppercase; margin: 4px; background: #fff; transition: background var(--speed), transform var(--speed), box-shadow var(--speed); }
+  .btn-ghost:hover, .btn-ghost:focus-visible { background: #111; color: #fff; }
+  .btn-ghost:active { transform: translate(1px, 1px); }
+  .btn-try:focus-visible, .btn-ghost:focus-visible { outline: 2px dashed #111; outline-offset: 3px; }
   body.style-neo .btn-ghost { box-shadow: 4px 4px 0 #000; background: #fff; font-family: var(--sans); font-weight: 800; }
-  .links { margin-top: 18px; font-size: 12px; letter-spacing: .14em; }
-  .links a { color: inherit; text-decoration: none; border-bottom: 1px solid currentColor; cursor: pointer; }
-  .links .dot { margin: 0 8px; }
-  .stats { display: grid; grid-template-columns: auto auto; gap: 6px 26px; margin: 4px auto 22px; font-size: 13px; text-align: left; width: max-content; }
+  body.style-neo .btn-ghost:hover, body.style-neo .btn-ghost:focus-visible { background: var(--accent-3); color: #000; transform: translate(-1px,-1px); box-shadow: 5px 5px 0 #000; }
+  .stats { display: grid; grid-template-columns: auto auto; gap: 5px 26px; margin: 4px auto 14px; font-size: 13px; text-align: left; width: max-content; }
   .stats dt { letter-spacing: .2em; text-transform: uppercase; color: var(--muted); font-size: 11px; align-self: center; }
   .stats dd { margin: 0; font-weight: 700; text-align: right; }
-  #deathsub { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.35); }
-  #deathsub .panel { max-width: 640px; }
+  .stats .total dt, .stats .total dd { border-top: var(--line); padding-top: 5px; font-size: 15px; color: var(--ink); }
+  .bigstars { font-size: 34px; letter-spacing: 6px; margin: 0 0 12px; }
+  .bigstars span { display: inline-block; animation: fadein .3s ease-out both; }
+  .bigstars .off { color: #ccc; }
+  body.style-neo .bigstars { color: #ff9a00; -webkit-text-stroke: 1.5px #000; }
+  body.style-neo .bigstars .off { color: #fff; }
+  .badge { display: inline-block; margin: 0 0 10px; padding: 3px 10px; border: var(--line); font-size: 11px; letter-spacing: .2em; text-transform: uppercase; }
+  body.style-neo .badge { background: var(--accent); }
+  .campaign { font-size: 12px; margin: 0 0 14px; color: var(--muted); }
   #clicklock { align-items: center; justify-content: center; cursor: pointer; background: rgba(255,255,255,.4); }
   #clicklock .card { padding: 20px 30px; }
   #clicklock .card p { margin: 6px 0 0; font-size: 12px; color: var(--muted); }
-  #loading { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: #fff; font-size: 12px; letter-spacing: .3em; text-transform: uppercase; }
+  #boot { position: fixed; inset: 0; display: flex; flex-direction: column; gap: 14px; align-items: center; justify-content: center; background: #fff; font-size: 12px; letter-spacing: .3em; text-transform: uppercase; text-align: center; padding: 20px; }
+  #boot .msg { max-width: 520px; letter-spacing: .05em; text-transform: none; line-height: 1.5; color: #7a0c0c; }
   #styletoast { position: fixed; left: 50%; top: 14%; transform: translateX(-50%); padding: 6px 14px; background: #fff; border: 1px solid #111; font-size: 12px; letter-spacing: .2em; text-transform: uppercase; opacity: 0; transition: opacity .3s; pointer-events: none; }
   body.style-neo #styletoast { border: 3px solid #000; box-shadow: 4px 4px 0 #000; background: #ffe600; font-family: var(--sans); font-weight: 900; }
 
@@ -179,7 +314,9 @@
   @media (max-width: 760px) {
     #menu, #pause { flex-direction: column; overflow: auto; }
     .styles, .mission { grid-template-columns: 1fr; }
+    #health { width: 180px; }
   }
+  @media (prefers-reduced-motion: reduce) { .screen, .panel, .card { animation: none; } }
 </style>
 </head>
 <body class="style-classic">
@@ -187,16 +324,28 @@
 
 <div id="hud" class="hidden">
   <div id="vignette"></div>
+  <div id="healflash"></div>
   <div id="edge-top" class="edge"></div>
   <div id="edge-bottom" class="edge"></div>
   <div id="edge-left" class="edge"></div>
   <div id="edge-right" class="edge"></div>
+  <div id="marker" class="hidden"><div class="dia"></div><div class="dist"></div></div>
   <div id="crosshair"></div>
   <div id="hitmarker"></div>
   <div id="prompt" class="hidden"></div>
-  <div id="hitdir"><div class="rule"></div><span>HIT - AHEAD</span></div>
+  <div id="hitdir"><div class="rule"></div><span></span></div>
   <div id="area"><div class="rule"></div><span></span></div>
-  <div id="ammo"><span class="mag">0</span> / <span class="res">0</span><span class="wname">SMG</span></div>
+  <div id="objective"><div class="h"></div><div class="txt"></div><div class="timer hidden"></div></div>
+  <div id="scorebox"><div class="sc">0</div><div class="combo"></div><div class="feed"></div></div>
+  <div id="bossbar" class="hidden"><span></span><div class="bar"><i></i></div></div>
+  <div id="cpnote" class="hidden"></div>
+  <div id="tip"></div>
+  <div id="overlay" class="hidden"></div>
+  <div id="perf" class="hidden"></div>
+  <div id="status">
+    <div id="health"><div class="lbl"><span class="h"></span><span class="num">100 / 100</span></div><div id="hpbar"><div id="hptrail"></div><div id="hpfill"></div><div class="cap"></div></div></div>
+    <div id="ammo"><div class="slots"><span class="slot s1"></span><span class="slot s2"></span></div><div class="count"><span class="mag">0</span> / <span class="res">0</span></div><div class="reload"><i></i></div></div>
+  </div>
   <div id="fps" class="hidden"></div>
   <div id="toast"></div>
 </div>
@@ -204,14 +353,17 @@
 
 <div id="menu" class="screen hidden">
   <div class="menu-left">
-    <div class="logo"><div class="logo-hw"></div><div class="sub">a stickman shooter</div></div>
+    <div class="logo"><div class="logo-hw"></div><div class="sub" data-t="game.sub"></div></div>
     <nav class="menu-nav">
-      <button data-go="play" class="primary">Play</button>
-      <button data-sec="style">Visual Style</button>
-      <button data-sec="controls">Controls</button>
-      <button data-sec="settings">Settings</button>
-      <button data-sec="howto">How to Play</button>
-      <button data-sec="credits">Credits</button>
+      <button data-go="play" class="primary" id="btn-play"></button>
+      <button data-sec="levels" data-t="menu.levels"></button>
+      <button data-sec="endless" data-t="menu.endless"></button>
+      <button data-sec="style" data-t="menu.style"></button>
+      <button data-sec="controls" data-t="menu.controls"></button>
+      <button data-sec="settings" data-t="menu.settings"></button>
+      <button data-sec="howto" data-t="menu.howto"></button>
+      <button data-sec="achievements" data-t="menu.achievements"></button>
+      <button data-sec="credits" data-t="menu.credits"></button>
     </nav>
   </div>
   <div class="panel" id="menu-panel"></div>
@@ -219,41 +371,67 @@
 
 <div id="pause" class="screen hidden">
   <div class="menu-left">
-    <div class="logo"><div class="logo-hw"></div><div class="sub">paused</div></div>
+    <div class="logo"><div class="logo-hw"></div><div class="sub" data-t="menu.paused"></div></div>
     <nav class="menu-nav">
-      <button data-go="resume" class="primary">Resume</button>
-      <button data-sec="style">Visual Style</button>
-      <button data-sec="settings">Settings</button>
-      <button data-sec="controls">Controls</button>
-      <button data-sec="mission">Mission</button>
-      <button data-go="restart">Restart</button>
-      <button data-go="mainmenu">Main menu</button>
+      <button data-go="resume" class="primary" data-t="menu.resume"></button>
+      <button data-sec="mission" data-t="menu.mission"></button>
+      <button data-sec="style" data-t="menu.style"></button>
+      <button data-sec="settings" data-t="menu.settings"></button>
+      <button data-sec="controls" data-t="menu.controls"></button>
+      <button data-go="checkpoint" data-t="menu.restartCheckpoint"></button>
+      <button data-go="restart" data-t="menu.restartLevel"></button>
+      <button data-go="mainmenu" data-t="menu.main"></button>
     </nav>
   </div>
   <div class="panel" id="pause-panel"></div>
 </div>
 
+<div id="loadcard" class="screen card-screen hidden">
+  <div class="card">
+    <div class="kicker" id="lc-kicker"></div>
+    <div class="lname" id="lc-name"></div>
+    <div class="place" id="lc-place"></div>
+    <div class="goal" id="lc-goal"></div>
+    <div class="reminder" id="lc-rem"></div>
+    <div class="progress"><i id="lc-bar"></i></div>
+    <button class="btn-try" id="lc-start" disabled></button>
+  </div>
+</div>
+
 <div id="death" class="screen card-screen hidden">
   <div class="card">
     <div class="title" id="death-title"></div>
-    <button class="btn-try" id="btn-try">Try again</button>
-    <div class="links"><a data-sub="mission">Mission</a><span class="dot">&middot;</span><a data-sub="controls">Controls</a><span class="dot">&middot;</span><a data-sub="settings">Settings</a></div>
+    <div id="death-extra"></div>
+    <div id="death-btns"></div>
   </div>
-  <div id="deathsub" class="hidden"><div class="panel" id="deathsub-panel"></div></div>
 </div>
 
-<div id="win" class="screen card-screen hidden">
+<div id="results" class="screen card-screen hidden">
   <div class="card">
-    <div class="title" id="win-title"></div>
-    <dl class="stats" id="win-stats"></dl>
-    <button class="btn-try" id="btn-again">Play again</button><button class="btn-ghost" id="btn-win-menu">Main menu</button>
+    <div class="title" id="res-title"></div>
+    <div class="kicker" id="res-level"></div>
+    <div class="bigstars" id="res-stars"></div>
+    <div id="res-badges"></div>
+    <dl class="stats" id="res-stats"></dl>
+    <div class="campaign" id="res-campaign"></div>
+    <div id="res-btns"></div>
   </div>
 </div>
 
-<div id="clicklock" class="screen hidden"><div class="card"><strong>Click to resume</strong><p>The browser needs a click before it will capture the mouse again.</p></div></div>
+<div id="clicklock" class="screen hidden"><div class="card"><strong data-t="clicklock.title"></strong><p data-t="clicklock.body"></p></div></div>
 <div id="styletoast"></div>
-<div id="loading">Loading&hellip;</div>
-
-<script src="dist/game.js"></script>
+<div id="boot"><div>Loading&hellip;</div><div class="msg hidden" id="boot-msg"></div></div>
+<script>
+  // If the game script never starts (missing dist/game.js, blocked file), say
+  // so instead of showing "Loading" forever.
+  window.__wtBootFail = function () {
+    if (window.__wtStarted) return;
+    var m = document.getElementById('boot-msg');
+    m.textContent = 'The game script (dist/game.js) did not load. Keep index.html next to the dist folder, or open waythrough.html, which has everything in one file.';
+    m.classList.remove('hidden');
+  };
+  window.__wtBootTimer = setTimeout(window.__wtBootFail, 8000);
+</script>
+<script src="dist/game.js" onerror="window.__wtBootFail && window.__wtBootFail()"></script>
 </body>
 </html>

@@ -155,7 +155,21 @@ const en = {
   'hud.reinforce': 'Reinforcements incoming',
   'hud.locked': 'Locked',
 
+  // ---- weapons
+  'weapon.smg': 'SMG',
+  'weapon.shotgun': 'Pump Shotgun',
+  'weapon.rifle': 'AK Rifle',
+  'weapon.burst': 'Burst Rifle',
+  'weapon.pistol': 'Pistol',
+  'weapon.mpistol': 'Auto Pistol',
+  'weapon.revolver': 'Revolver',
+  'toast.took': 'Picked up {gun}',
+  'toast.ammo': '+{n} {gun} ammo',
+  'toast.ammoFull': 'Ammo full',
+  'toast.health': '+35 health',
+
   // ---- prompts
+  'prompt.lockedToast': 'Locked. Find another way.',
   'prompt.open': 'Open',
   'prompt.close': 'Close',
   'prompt.swap': 'Swap {name}',
