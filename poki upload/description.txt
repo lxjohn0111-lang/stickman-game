@@ -1,0 +1,23 @@
+One Way Out
+
+Short description:
+A first-person stickman shooter campaign: eight hand-drawn levels, smart enemies, a commander to defeat, and two visual styles you can switch in the middle of a fight.
+
+Description:
+One Way Out is a first-person stickman shooter. Fight your way through eight levels, each with its own objective: get off a rooftop and out through a kitchen, a canteen and a fenced yard, cross a container port at sunset, restore power in an underground station, destroy radio masts at a desert outpost, free a hostage in a snowed-in mountain hotel, shut down a running factory, hold out on a rainy city block at night, and storm an island fortress whose commander fights back.
+
+Enemies notice you gradually, fight in bursts, follow you through doors and search where they last saw you. Pistol gunners are fast and accurate, SMG rushers keep pushing, riflemen change cover, shotgunners close in, and armoured heavies shrug off hits. Snipers show a red laser for about a second before they fire, so keep moving. Enemy bullets are slow enough to dodge.
+
+Take the guns fallen enemies drop: carry an SMG, pump shotgun, AK or burst rifle next to a pistol, auto pistol or revolver. Finish a level to earn up to three stars from kills, headshots, accuracy, speed and combos, and look for three hidden secrets in every level.
+
+Switch at any moment between two looks: Classic, black ink lines on white paper, or Neobrutalist, with loud colours, thick outlines and hard shadows.
+
+Features:
+- 8 levels with different objectives, checkpoints and a boss fight
+- 7 weapons and 5 enemy types, plus snipers
+- Easy, Normal and Hard
+- Scores, stars, secrets and achievements
+- Endless Mode unlocks when you finish the campaign
+- Two visual styles, switchable at any time
+- Progress is saved to your CrazyGames account
+- Keyboard and mouse, or touch controls on phones and tablets

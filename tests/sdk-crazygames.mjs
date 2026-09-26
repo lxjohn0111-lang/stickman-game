@@ -1,5 +1,7 @@
 // CrazyGames SDK v3 integration, against a stand-in SDK that records every
 // call (the real SDK only runs on crazygames.com / localhost with network).
+// The Poki side has its own suite, tests/sdk-poki.mjs; neither portal's
+// adapter may affect the other, which check 8 below pins down.
 // Checks: init before the save is read, progress read from and written to
 // the data module (not localStorage), loadingStart/Stop around boot and level
 // loads, gameplayStart/Stop following play/pause/death, happytime on level
@@ -52,7 +54,7 @@ const mockSdk = ({ env = 'crazygames', hang = false, muted = false, data = {} } 
   const iInit = boot.calls.indexOf('init'), iRead = boot.calls.indexOf('getItem:onewayout.save.v1');
   check('SDK initialised before the save is read', iInit === 0 && iRead > iInit, boot.calls.slice(0, 6));
   check('progress and settings come from the data module', boot.unlocked === 3 && boot.quality === 'medium' && /Level 3/.test(boot.play) && boot.ls === null, { unlocked: boot.unlocked, quality: boot.quality, play: boot.play });
-  check('environment detected as CrazyGames', boot.env === 'crazygames' && boot.portal, { env: boot.env });
+  check('environment detected as CrazyGames', boot.env === 'crazygames' && boot.portal && (await page.evaluate(() => WT.platform.name)) === 'crazygames', { env: boot.env });
   check('loadingStart at boot, loadingStop when the menu is ready', boot.calls.includes('loadingStart') && boot.calls.indexOf('loadingStop') > boot.calls.indexOf('loadingStart'), '');
   // settings: no custom fullscreen on the portal
   await page.$eval('nav.menu-nav button[data-sec=settings]', (el) => el.click());
@@ -88,7 +90,8 @@ const mockSdk = ({ env = 'crazygames', hang = false, muted = false, data = {} } 
   await page.waitForFunction(() => WT.platform._playing, null, { timeout: 30000 });
   // complete the level -> happytime + the record saved to the account
   await page.evaluate(() => { window.__cg.calls.length = 0; const m = WT.game.mission; m.index = m.objectives.length - 1; m.obj = m.objectives[m.index]; m._complete(); });
-  await page.waitForTimeout(300);
+  // gameplayStop lands on the next frame, so wait for it rather than guess
+  await page.waitForFunction(() => window.__cg.calls.includes('happytime') && window.__cg.calls.includes('gameplayStop'), null, { timeout: 30000 }).catch(() => {});
   c = await page.evaluate(() => [...window.__cg.calls]);
   const rec = await page.evaluate(() => JSON.parse(window.__cg.store.get('onewayout.save.v1')));
   check('level complete: happytime and gameplayStop', c.includes('happytime') && c.includes('gameplayStop'), c);
@@ -158,6 +161,17 @@ for (const [name, init] of [['disabled SDK', mockSdk({ env: 'disabled' })], ['no
   check('upload build: loads game.js, SDK tag in head, uses the SDK', v.state === 'menu' && v.env === 'crazygames' && v.sdkTag && v.calls[0] === 'init', v);
   const errs = logs.filter((l) => l.startsWith('pageerror'));
   check('upload build: no page errors', errs.length === 0, errs.slice(0, 3));
+  await browser.close();
+}
+
+// ---- 8. the CrazyGames build asks for no ads and never touches a Poki SDK
+{
+  const poki = `window.PokiSDK = new Proxy({}, { get: (t, k) => { (window.__poki = window.__poki || []).push(String(k)); return () => Promise.resolve(); } });`;
+  const { browser, page } = await launch({ query: 'nolock', init: mockSdk({}) + poki });
+  await page.evaluate(() => { WT.game.manual = true; WT.game.startLevel(1); });
+  await page.waitForFunction(() => WT.game.state === 'ready', null, { timeout: 300000 });
+  const v = await page.evaluate(() => ({ name: WT.platform.name, ads: WT.platform.ads, poki: window.__poki || [], adPause: !!WT.game.adPause }));
+  check('CrazyGames build: no ad breaks, Poki SDK untouched', v.name === 'crazygames' && v.ads === false && v.poki.length === 0 && !v.adPause, v);
   await browser.close();
 }
 

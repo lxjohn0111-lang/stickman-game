@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 const dir = path.dirname(fileURLToPath(import.meta.url));
 const suites = [
-  ['systems.mjs'], ['lock.mjs'], ['ui.mjs'], ['qualities.mjs'], ['mobile.mjs'], ['sdk.mjs'], ['campaign.mjs'],
+  ['systems.mjs'], ['lock.mjs'], ['ui.mjs'], ['qualities.mjs'], ['mobile.mjs'], ['sdk-crazygames.mjs'], ['sdk-poki.mjs'], ['campaign.mjs'],
 ];
 let failed = 0;
 for (const [file, ...args] of suites) {

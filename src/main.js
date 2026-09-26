@@ -128,7 +128,7 @@ class Game {
     // the menu backdrop is the level the player will continue on
     platform.onSettings = () => this.applySettings(false);
     this.loadLevel(Math.min(progress.last || 1, LEVELS.length), { backdrop: true }).then(() => {
-      platform.loading(false);
+      platform.loading(false, true);
       window.__wtStarted = true;
       document.getElementById('boot').classList.add('hidden');
       this.state = 'menu';
@@ -472,9 +472,24 @@ class Game {
     }
     this._freshStart(false);
     this._prepareLevelAudio();
-    this.state = 'ready';
     platform.loading(false);
+    const token = this.loadToken;
+    await this.adBreak();
+    if (token !== this.loadToken) return; // another level was started meanwhile
+    this.state = 'ready';
     this.ui.loadReady();
+  }
+
+  // An ad moment, where the portal wants one, before the player heads into a
+  // level. The game is frozen and silent while it runs: the loading card is
+  // already up, and the player's click on Start still follows afterwards, so
+  // capturing the mouse stays inside their own gesture.
+  async adBreak() {
+    if (!platform.ads) return;
+    this.adPause = true;
+    try { await platform.adBreak(); } catch (e) { /* never block the game */ }
+    this.adPause = false;
+    this.last = performance.now();
   }
 
   _prepareLevelAudio() {
@@ -519,8 +534,9 @@ class Game {
     this._freshStart(true);
     this.endless.beginSection(this.level);
     this._prepareLevelAudio();
-    this.state = 'ready';
     platform.loading(false);
+    await this.adBreak();
+    this.state = 'ready';
     this.ui.loadReady();
   }
 
@@ -535,8 +551,10 @@ class Game {
     this.endless.beginSection(this.level);
     this._prepareLevelAudio();
     this.ui.resetRun();
-    this.state = 'ready';
     platform.loading(false);
+    await this.adBreak();
+    this.state = 'ready';
+    // an ad drops the pointer lock: then the loading card asks for a click
     if (locked && this.input.locked) { this._enterPlaying(); } else this.ui.loadReady();
   }
 
@@ -744,6 +762,7 @@ class Game {
   frame(now) {
     requestAnimationFrame((tt) => this.frame(tt));
     if (this.manual) { this.last = now; return; } // tests drive step() themselves
+    if (this.adPause) { this.last = now; return; } // an ad is on screen
     const realDt = Math.min(0.25, Math.max(0, (now - this.last) / 1000));
     this.last = now;
     const dt = Math.min(realDt, 1 / 30);
@@ -908,13 +927,14 @@ async function boot() {
   window.__wtScript = true;
   // the SDK must be ready before the saved progress is read from it
   await platform.init();
-  platform.loading(true);
+  platform.loading(true, true);
   cache.dropLegacy('waythrough.preview.');
   try {
     const game = new Game();
     window.WT = { game, snapshot: () => game.snapshot(), THREE, HOLD, progress, resetProgress: resetProgressForTests, t, platform, handwrite };
   } catch (err) {
     console.error(err);
+    platform.error(err);
     const l = document.getElementById('boot-msg');
     if (l) { l.textContent = t('loading.error', { msg: err && err.message ? err.message : String(err) }); l.classList.remove('hidden'); }
     window.__wtStarted = true;

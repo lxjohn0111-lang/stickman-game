@@ -1,0 +1,20 @@
+Keyboard and mouse
+- W A S D: move
+- Mouse: look
+- Left click: fire (hold for automatic weapons)
+- Right click: steady aim (hold)
+- Space: jump; let go of a ladder
+- Shift: sprint
+- C or Left Ctrl: crouch (hold)
+- F: open doors, use switches and consoles, swap guns, take ammo
+- R: reload
+- 1 / 2, Q or mouse wheel: main weapon / sidearm
+- V: switch visual style (Classic / Neobrutalist)
+- Esc: pause
+
+Touch (phones and tablets, landscape)
+- Left thumb: drag to move (push to the edge to sprint)
+- Right thumb: drag to look
+- Fire button: shoot (hold for automatic weapons); light aim assist while firing
+- Aim, jump, crouch, reload, weapon switch and pause buttons
+- Tap the prompt under the crosshair to open doors, use switches and swap guns

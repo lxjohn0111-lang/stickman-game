@@ -1,6 +1,6 @@
 # One Way Out
 
-A first-person stickman shooter campaign for the browser: eight levels, three difficulties, Endless Mode, and two visual styles you can switch at any moment (Neobrutalist by default, Classic ink-on-paper as the alternative). It is built for CrazyGames: it's playable within two clicks, it works with keyboard and mouse or with touch controls on phones and tablets, it pauses on focus loss, and it saves progress through the CrazyGames SDK's data module (localStorage everywhere else).
+A first-person stickman shooter campaign for the browser: eight levels, three difficulties, Endless Mode, and two visual styles you can switch at any moment (Neobrutalist by default, Classic ink-on-paper as the alternative). It is built for portals like CrazyGames and Poki: it's playable within two clicks, it works with keyboard and mouse or with touch controls on phones and tablets, it pauses on focus loss, and it saves progress through the CrazyGames SDK's data module, or localStorage on Poki and offline.
 
 (The game was called *Way Through* before; saves from that version carry over.)
 
@@ -11,6 +11,7 @@ Everything is built at load time. The geometry is boxes, cylinders and cones out
 | How | What to open |
 | --- | --- |
 | CrazyGames | The folder `crazygames upload/`: `game/` holds the two files to upload (with the CrazyGames SDK), next to the covers, preview videos, description, controls and an upload guide (in Hungarian). |
+| Poki | The folder `poki upload/`: `game/` holds the two files to upload (with the Poki SDK), next to the description, controls and an upload guide (in Hungarian). |
 | Offline, one file | `onewayout.html`, which has the game script inlined. Double-click it; nothing else is needed. |
 | Offline, from the repo | `index.html`, which loads `dist/game.js` (committed). Keep the `dist/` folder next to it. If the script can't load, the page says so after a few seconds instead of loading forever. |
 | Local server | `node server.js` → http://localhost:8080 (`node server.js 3000` for another port) |
@@ -19,7 +20,7 @@ Rebuild after editing `src/`:
 
 ```sh
 npm install             # esbuild only; three.js is vendored in vendor/three
-npm run build           # dist/game.js + onewayout.html + artifact/index.html + crazygames upload/game/
+npm run build           # dist/game.js + onewayout.html + artifact/index.html + both portal builds
 npm run watch           # rebuild dist/game.js on change
 ```
 
@@ -140,22 +141,65 @@ Touch screens are detected at start (a coarse primary pointer); a touch laptop s
 - **Layout:** health and ammo move to the top right so thumbs don't cover them; menus, Level Select and every card are laid out for landscape phone screens down to 740x360, and the menus, settings, style choice and cards also work in portrait. Only play needs landscape: turning the phone upright pauses, and a level started or resumed in portrait shows a "Turn your device" card and continues once it is turned.
 - **Defaults:** Low quality on the first run (the player can raise it), no pointer lock, touch wording in the hints, tips, tutorial overlay and controls page. Outside CrazyGames, starting a level also asks for fullscreen and a landscape lock where the browser allows it.
 
-## CrazyGames SDK
+## Portals: CrazyGames and Poki
 
-`src/platform.js` wraps the CrazyGames HTML5 SDK v3, which only the CrazyGames build loads (`<script src="https://sdk.crazygames.com/crazygames-sdk-v3.js">` in `<head>`):
+The game is on both, and each portal's SDK lives in its own self-contained
+adapter. A build carries the script tag of at most one of them, so editing one
+adapter cannot change the other portal's build.
 
-- `SDK.init()` runs before anything reads the save (with a 5 s timeout, so a blocked SDK never stops the game).
-- Progress and settings use `SDK.data.getItem/setItem` when the environment is `crazygames` or `local`; with no SDK, a `disabled` one or a failed init, localStorage.
-- `loadingStart/Stop` around the boot and every level load; `gameplayStart/Stop` follow whether the game is actually being played (pause, focus loss, death, menus and result screens stop it); `happytime()` on level complete.
-- The portal's `muteAudio` setting silences the game, including changes while it runs (`addSettingsChangeListener`).
-- No ads are requested.
+```
+src/platform.js              picks whichever SDK is on the page; storage, ad breaks
+src/platforms/crazygames.js  CrazyGames HTML5 SDK v3
+src/platforms/poki.js        Poki SDK
+```
+
+`npm run build` writes both upload folders (`crazygames upload/game/` and
+`poki upload/game/`, each `index.html` + `game.js`). `?platform=crazygames`,
+`?platform=poki` or `?platform=none` forces one while testing.
+
+Common to both: the SDK is initialised before anything reads the save (with a
+5 s timeout, so a blocked SDK never stops the game), gameplay start/stop follow
+whether the game is actually being played (pause, focus loss, death, menus and
+result screens stop it), and a level win is reported as a happy moment.
+
+**CrazyGames** (`https://sdk.crazygames.com/crazygames-sdk-v3.js`):
+
+- Progress and settings use `SDK.data.getItem/setItem` when the environment is
+  `crazygames` or `local`, so a signed-in player's progress follows their
+  account across devices; with no SDK, a `disabled` one or a failed init,
+  localStorage.
+- `loadingStart/Stop` around the boot and every level load.
+- The portal's `muteAudio` setting silences the game, including changes while
+  it runs (`addSettingsChangeListener`).
+- No ads are requested. To add them, `SDK.ad.requestAd` goes in `adBreak()`
+  and `ads: true` makes the game offer a break before each level.
+
+**Poki** (`https://game-cdn.poki.com/scripts/v2/poki-sdk.js`):
+
+- Poki has no cloud save, so progress and settings go to localStorage.
+- `gameLoadingStart/Finished` mark the game's own first load only: Poki uses
+  that pair for its loading and conversion metrics, so per-level loads must
+  not repeat it.
+- `commercialBreak()` runs before every level start, while the loading card is
+  up. The game is frozen and silent for its duration and carries on when the
+  promise settles; Poki decides whether an ad actually runs. Death-card
+  restarts deliberately have no ad break, so the player's click keeps
+  capturing the mouse; adding one is a single `await this.adBreak()` in
+  `_afterRestart`, at the cost of an extra click after the ad.
+- A crash at boot is reported with `captureError()`.
+- Debug mode is switched on when the page is not framed, so ads show
+  placeholders while developing.
+- Poki's size limits are 5 MB for the initial download and 8 MB in total; this
+  build is about 1.1 MB in two files, and makes no external requests beyond
+  the SDK itself.
 
 ## Project layout
 
 ```
 index.html              markup + CSS for both styles; boot watchdog; loads dist/game.js
 onewayout.html          generated: the same page with the script inlined
-crazygames upload/      generated game/ build with the SDK, plus covers, videos, texts and a guide
+crazygames upload/      generated game/ build with the CrazyGames SDK, plus covers, videos, texts, guide
+poki upload/            generated game/ build with the Poki SDK, plus texts and a guide
 artifact/index.html     generated: page body for the hosted preview
 build.mjs               esbuild bundle + the generated pages and the CrazyGames build
 tools/                  store media: covers.mjs (3 covers), video.mjs (preview videos), stage.mjs
@@ -176,7 +220,8 @@ src/
   env.js                rain, snow + footprints, dust, wet-street reflections
   ui.js                 HUD, menus, Level Select, cards, settings, minimap
   i18n.js               all player-facing text
-  platform.js           CrazyGames SDK v3 wrapper and the storage it picks
+  platform.js           picks the portal SDK on the page; storage and ad breaks
+  platforms/            crazygames.js and poki.js, one self-contained adapter each
   touch.js              touch controls and aim assist
   save.js / settings.js progress and settings (through platform.js)
   audio.js              synthesised sounds, music loops, ambience beds, echo send
@@ -189,7 +234,7 @@ tests/                  Playwright harness, objective bot and test suites
 The browser tests need Playwright with Chromium; SwiftShader WebGL is fine.
 
 ```sh
-npm test                          # systems, pointer lock, UI flows, qualities, mobile, SDK, full campaign
+npm test                          # systems, pointer lock, UI flows, qualities, mobile, both SDKs, full campaign
 node tests/systems.mjs            # movement, weapons, health, slots, enemies, checkpoints, styles, quality
 node tests/campaign.mjs           # all 8 levels in sequence through the menus on Normal
                                   # (--from 4 --to 8 to run part of it)
@@ -197,7 +242,8 @@ node tests/level.mjs 5 --god      # one level with the objective bot
 node tests/ui.mjs                 # menus, Level Select, cards, Endless
 node tests/qualities.mjs          # every level at Low, Medium and High
 node tests/mobile.mjs             # touch controls and layout on an emulated phone
-node tests/sdk.mjs                # CrazyGames SDK integration against a recording stand-in
+node tests/sdk-crazygames.mjs     # CrazyGames SDK integration against a recording stand-in
+node tests/sdk-poki.mjs           # Poki SDK integration against a recording stand-in
 node tests/views.mjs 3 "x,y,z,yaw,pitch"   # screenshots of a spot in both styles
 ```
 
@@ -248,7 +294,7 @@ The results below come from headless Chromium with SwiftShader.
   - Tapping the prompt opens a door.
   - Aim assist pulls the view from 4° off to under 1° in a third of a second of firing.
   - Portrait shows the "Turn your device" card and pauses.
-- **CrazyGames SDK** (`tests/sdk.mjs`, against a stand-in with the SDK v3 interface that records every call), all passing:
+- **CrazyGames SDK** (`tests/sdk-crazygames.mjs`, against a stand-in with the SDK v3 interface that records every call), all passing:
   - `init` runs before the save is read.
   - Progress and settings are read from and written to the data module, with nothing in localStorage.
   - `loadingStart/Stop` wrap the boot and level loads.
@@ -259,6 +305,16 @@ The results below come from headless Chromium with SwiftShader.
   - The upload build in `crazygames upload/game/` loads with the SDK tag in its head.
   - A hanging, disabled or missing SDK falls back to localStorage without errors.
   - Old *Way Through* saves migrate.
+  - No ad break is requested, and a Poki SDK on the same page is never touched.
+- **Poki SDK** (`tests/sdk-poki.mjs`, same idea), all passing:
+  - `init` runs before the save is read, and `gameLoadingStart/Finished` mark the boot only, not level loads.
+  - Progress goes to localStorage.
+  - A commercial break runs before a level starts: the game is frozen (`adPause`) and silent (master volume 0) while it plays, and sound, motion and the Start button come back afterwards.
+  - `gameplayStart/Stop` follow play, pause, focus loss and death; `happyTime` fires on level complete.
+  - A restart from the death card starts play again with no ad break.
+  - A rejected ad, an SDK without `commercialBreak`, a hanging init and no SDK at all each still let the game run.
+  - The upload build in `poki upload/game/` loads with the Poki tag in its head and no CrazyGames tag.
+  - With both SDKs on one page, `?platform=` decides and the other SDK is never called.
 - The desktop suites (systems, pointer lock, UI) were re-run after the rename, touch and SDK changes and still pass.
 - **Hitboxes and flicker** (`tools/audit-colliders.mjs`, 2,500 bullet rays per level; `tools/audit-zfight.mjs`):
   - Collider hits with nothing visible within 30 cm dropped from 717 to 38 across the eight levels. Levels 2, 6 and 8 have none. The desert went from 405 (rocks and tents) to 9, all on the three radio masts, whose hit box is deliberately the whole lattice so they are fair targets. The factory went from 58 (furnaces) to 0. The rest are single hits on the few-centimetre corners of stepped ramps and thin posts.

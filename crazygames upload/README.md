@@ -21,6 +21,8 @@ Ebben a mappában minden megvan, amit a CrazyGames fejlesztői portálra (develo
 - **Mobil és tablet:** támogatott (érintéses irányítás, célzássegítés)
 - **Nyelv:** angol
 
+A játék a Pokira is fel van téve, az a build a `poki upload/` mappában van. A két portál SDK-ja teljesen külön kódban van (`src/platforms/crazygames.js` és `src/platforms/poki.js`), és mindegyik build csak a saját SDK-ját tölti be, így az egyiken végzett változtatás a másikat nem érinti.
+
 ## Mit csinál a CrazyGames SDK a játékban
 
 A `game/index.html` a `<head>`-ben betölti a CrazyGames HTML5 SDK v3-at (`https://sdk.crazygames.com/crazygames-sdk-v3.js`). A játék:
@@ -34,7 +36,7 @@ A `game/index.html` a `<head>`-ben betölti a CrazyGames HTML5 SDK v3-at (`https
 
 Ha az SDK nem érhető el (például reklámblokkoló miatt), a játék 5 másodperc után nélküle indul, és a böngésző localStorage-ába ment.
 
-Reklámot (midgame / rewarded) a játék nem kér. Ha kellene, a pályák közötti váltás jó hely lenne rá.
+Reklámot (midgame / rewarded) a CrazyGames-en a játék **nem** kér. Ha kellene, a `src/platforms/crazygames.js`-ben az `adBreak()` helyére kerülne az `SDK.ad.requestAd` hívás, és az `ads: true` kapcsolóval a játék magától kérne egy reklámot minden pályakezdés előtt (a Pokin ez már így működik).
 
 ## Tesztelés feltöltés előtt
 
@@ -42,7 +44,7 @@ A portál "Preview" / QA eszközében ellenőrizd, hogy a menü betöltődik, eg
 
 ```sh
 npm run build          # újragenerálja a game/ mappát a src/-ből
-node tests/sdk.mjs     # SDK-integráció egy SDK-utánzattal
+node tests/sdk-crazygames.mjs   # SDK-integráció egy SDK-utánzattal
 node tests/mobile.mjs  # érintéses irányítás telefon-emulációban
 ```
 

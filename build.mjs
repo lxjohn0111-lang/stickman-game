@@ -9,8 +9,13 @@ import { fileURLToPath } from 'node:url';
 const root = path.dirname(fileURLToPath(import.meta.url));
 const watch = process.argv.includes('--watch');
 const dev = process.argv.includes('--dev');
-const CG_DIR = path.join(root, 'crazygames upload', 'game');
-const CG_SDK = '<script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>';
+// One upload folder per portal. Each build carries only its own SDK script,
+// so the two are completely independent: src/platform.js picks whichever SDK
+// is on the page. Editing one portal's adapter can't affect the other build.
+const PORTALS = [
+  { dir: 'crazygames upload', sdk: 'https://sdk.crazygames.com/crazygames-sdk-v3.js' },
+  { dir: 'poki upload', sdk: 'https://game-cdn.poki.com/scripts/v2/poki-sdk.js' },
+];
 
 
 const options = {
@@ -34,25 +39,27 @@ if (watch) {
 } else {
   await esbuild.build(options);
   packagePages();
-  packageCrazyGames();
+  for (const p of PORTALS) packagePortal(p);
 }
 
-// The CrazyGames build: 'crazygames upload/game/' holds exactly the files to
-// upload (index.html + game.js). It is index.html with the CrazyGames HTML5
-// SDK v3 loaded first in <head>; src/platform.js picks it up at boot.
-function packageCrazyGames() {
+// A portal build: '<portal> upload/game/' holds exactly the files to upload
+// (index.html + game.js). It is index.html with that portal's SDK loaded first
+// in <head>; src/platform.js picks it up at boot.
+function packagePortal({ dir, sdk }) {
   let html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
   const tag = '<script src="dist/game.js" onerror="window.__wtBootFail && window.__wtBootFail()"></script>';
   const missing = /The game script \(dist\/game\.js\) did not load\.[^']*'/;
   if (!html.includes(tag) || !missing.test(html)) throw new Error('index.html markers not found');
   html = html
-    .replace('<meta charset="utf-8">', () => `<meta charset="utf-8">\n${CG_SDK}`)
+    .replace('<meta charset="utf-8">', () => `<meta charset="utf-8">\n<script src="${sdk}"></script>`)
     .replace(tag, () => '<script src="game.js" onerror="window.__wtBootFail && window.__wtBootFail()"></script>')
     .replace(missing, () => "The game could not be loaded. Please reload the page.'");
-  fs.mkdirSync(CG_DIR, { recursive: true });
-  fs.writeFileSync(path.join(CG_DIR, 'index.html'), html);
-  fs.copyFileSync(path.join(root, 'dist/game.js'), path.join(CG_DIR, 'game.js'));
-  console.log('  crazygames upload/game/ written (index.html + game.js)');
+  const out = path.join(root, dir, 'game');
+  fs.mkdirSync(out, { recursive: true });
+  fs.writeFileSync(path.join(out, 'index.html'), html);
+  fs.copyFileSync(path.join(root, 'dist/game.js'), path.join(out, 'game.js'));
+  const kb = (p) => Math.round(fs.statSync(p).size / 1024);
+  console.log(`  ${dir}/game/ written (index.html + game.js, ${kb(path.join(out, 'index.html')) + kb(path.join(out, 'game.js'))} KB)`);
 }
 
 // Two extra pages generated from index.html + the bundle:
