@@ -3,6 +3,19 @@
 <head>
 <meta charset="utf-8">
 <script src="https://game-cdn.poki.com/scripts/v2/poki-sdk.js"></script>
+<script>
+  window.pokiReady = (function () {
+    if (typeof PokiSDK === 'undefined') return Promise.resolve(false);
+    try {
+      if (/[?&]pokidebug=1/.test(location.search) && PokiSDK.setDebug) PokiSDK.setDebug(true);
+      return Promise.resolve(PokiSDK.init()).then(function () {
+        if (PokiSDK.gameLoadingStart) PokiSDK.gameLoadingStart();
+        window.pokiLoadingStarted = true;
+        return true;
+      }).catch(function () { return false; });
+    } catch (e) { return Promise.resolve(false); }
+  })();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">

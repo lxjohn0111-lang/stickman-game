@@ -5,8 +5,9 @@
 // Its script tag is added to the Poki build alone, so `detect()` is what tells
 // src/platform.js that this is a Poki page.
 //
-//  * init: PokiSDK.init(). Debug mode is switched on when the page is not
-//    framed (i.e. opened directly while developing), so ads show placeholders.
+//  * init: PokiSDK.init(), started by index.html itself on the Poki build so
+//    it runs before this bundle parses; `?pokidebug=1` turns on debug mode,
+//    where ads show placeholders.
 //  * loading: gameLoadingStart / gameLoadingFinished mark the first load only.
 //    Poki uses that pair for its loading and conversion metrics, so per-level
 //    loads must not repeat it.
@@ -41,11 +42,17 @@ export const poki = {
     const p = window.PokiSDK;
     if (!p) return false;
     const framed = (() => { try { return window.self !== window.top; } catch (e) { return true; } })();
-    // developing outside Poki's frame: placeholder ads instead of real ones
-    if (!framed) this._call((s) => s.setDebug(true));
     try {
+      // The Poki build starts the SDK from index.html (see build.mjs), so the
+      // page itself shows the integration and init() runs before the game
+      // bundle has even parsed. Anywhere else, start it here.
+      let ready = window.pokiReady;
+      if (!ready) {
+        if (/[?&]pokidebug=1/.test(location.search)) this._call((s) => s.setDebug && s.setDebug(true));
+        ready = Promise.resolve(p.init()).then(() => true).catch(() => false);
+      }
       const done = await Promise.race([
-        Promise.resolve(p.init()).then(() => true),
+        ready,
         new Promise((r) => setTimeout(() => r(false), timeoutMs)),
       ]);
       if (!done) { this.env = 'disabled'; return false; }
@@ -68,9 +75,11 @@ export const poki = {
     try { return fn(s); } catch (e) { return undefined; }
   },
 
-  // Only the game's own first load is reported (see the note above).
+  // Only the game's own first load is reported (see the note above). On the
+  // Poki build index.html has already marked the start, so it isn't repeated.
   loading(on, boot) {
     if (!boot) return;
+    if (on && window.pokiLoadingStarted) return;
     this._call((s) => (on ? s.gameLoadingStart && s.gameLoadingStart() : s.gameLoadingFinished && s.gameLoadingFinished()));
   },
 

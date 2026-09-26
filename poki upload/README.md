@@ -12,9 +12,9 @@ A borítóképek és az előnézeti videók a `crazygames upload/covers` és `cr
 
 ## Mit csinál a Poki SDK a játékban
 
-A `game/index.html` a `<head>`-ben betölti a Poki SDK-t (`https://game-cdn.poki.com/scripts/v2/poki-sdk.js`). A játék:
+A `game/index.html` a `<head>`-ben betölti a Poki SDK-t (`https://game-cdn.poki.com/scripts/v2/poki-sdk.js`), és **maga az index.html hívja meg a `PokiSDK.init()`-et** közvetlenül utána, ahogy a Poki HTML5 útmutatója mutatja. Így az SDK már azelőtt elindul, hogy a játék kódja (`game.js`) betöltődne, és az integráció az `index.html`-ben ránézésre is látszik. A játék:
 
-- indításkor `await PokiSDK.init()`-et hív, és csak utána olvassa be a mentést;
+- megvárja az `index.html`-ben elindított `PokiSDK.init()`-et, és csak utána olvassa be a mentést;
 - `gameLoadingStart()` / `gameLoadingFinished()` jelzést küld **a játék első betöltéséről**. A pályák közti betöltés nem számít újra betöltésnek, mert a Poki ezt a párost a betöltési és a "beindulási" statisztikához használja;
 - `gameplayStart()` / `gameplayStop()` jelzést küld: játék közben start, szünetnél, ablakváltásnál, halálnál, menüben és a pálya végén stop;
 - **`commercialBreak()`-et hív minden pályakezdés előtt**, amíg a betöltő kártya látszik. A reklám alatt a játék áll és néma, utána magától folytatódik. Hogy tényleg legyen-e reklám, azt a Poki dönti el;
@@ -35,6 +35,17 @@ Ha az SDK nem érhető el (reklámblokkoló, hálózati hiba), a játék 5 máso
 - **Mobil:** érintéses irányítás, a menü álló helyzetben is használható, a játék fekvő helyzetet kér.
 - **Szünet:** Esc billentyűvel, illetve a szünet gombbal érintőképernyőn.
 
+## Feltöltés
+
+A Poki zipet vár, amiben az `index.html` **a gyökérben** van, burkoló mappa nélkül. A kész zip a repó gyökerében: `one-way-out-poki.zip` (315 KB, benne `index.html` + `game.js`).
+
+Újragenerálni:
+
+```sh
+npm run build
+cd "poki upload/game" && zip -9 ../../one-way-out-poki.zip index.html game.js
+```
+
 ## Tesztelés feltöltés előtt
 
 ```sh
@@ -45,4 +56,4 @@ node tests/mobile.mjs      # érintéses irányítás telefon-emulációban
 
 A Poki Inspectorával a `game/` mappát lehet betölteni.
 
-Helyben a `?platform=poki` illetve `?platform=crazygames` paraméterrel lehet kikényszeríteni, melyik SDK-t használja a játék, `?platform=none`-nal pedig egyiket sem.
+Helyben a `?platform=poki` illetve `?platform=crazygames` paraméterrel lehet kikényszeríteni, melyik SDK-t használja a játék, `?platform=none`-nal pedig egyiket sem. A `?pokidebug=1` bekapcsolja a Poki debug módját (helyettesítő reklámok); a feltöltött buildben alapból ki van kapcsolva.

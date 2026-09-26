@@ -176,6 +176,12 @@ result screens stop it), and a level win is reported as a happy moment.
 
 **Poki** (`https://game-cdn.poki.com/scripts/v2/poki-sdk.js`):
 
+- `index.html` itself calls `PokiSDK.init()` right after the script tag, the
+  way Poki's HTML5 guide shows, so the SDK starts before the game bundle has
+  parsed and the integration is visible in the page rather than buried in the
+  minified bundle. `src/platforms/poki.js` waits for that promise.
+- Poki wants a zip with `index.html` at its root and no wrapping directory;
+  `one-way-out-poki.zip` is exactly that.
 - Poki has no cloud save, so progress and settings go to localStorage.
 - `gameLoadingStart/Finished` mark the game's own first load only: Poki uses
   that pair for its loading and conversion metrics, so per-level loads must
@@ -187,8 +193,8 @@ result screens stop it), and a level win is reported as a happy moment.
   capturing the mouse; adding one is a single `await this.adBreak()` in
   `_afterRestart`, at the cost of an extra click after the ad.
 - A crash at boot is reported with `captureError()`.
-- Debug mode is switched on when the page is not framed, so ads show
-  placeholders while developing.
+- `?pokidebug=1` turns on Poki's debug mode, where ads show placeholders; the
+  uploaded build leaves it off.
 - Poki's size limits are 5 MB for the initial download and 8 MB in total; this
   build is about 1.1 MB in two files, and makes no external requests beyond
   the SDK itself.
@@ -313,7 +319,8 @@ The results below come from headless Chromium with SwiftShader.
   - `gameplayStart/Stop` follow play, pause, focus loss and death; `happyTime` fires on level complete.
   - A restart from the death card starts play again with no ad break.
   - A rejected ad, an SDK without `commercialBreak`, a hanging init and no SDK at all each still let the game run.
-  - The upload build in `poki upload/game/` loads with the Poki tag in its head and no CrazyGames tag.
+  - The upload build in `poki upload/game/` loads with the Poki tag in its head and no CrazyGames tag, `index.html` itself calls `PokiSDK.init()`, and init, `gameLoadingStart` and `gameLoadingFinished` each fire exactly once in that order.
+  - The zip that gets uploaded was extracted and run: the SDK is detected, the three load events fire and a commercial break runs before the level.
   - With both SDKs on one page, `?platform=` decides and the other SDK is never called.
 - The desktop suites (systems, pointer lock, UI) were re-run after the rename, touch and SDK changes and still pass.
 - **Hitboxes and flicker** (`tools/audit-colliders.mjs`, 2,500 bullet rays per level; `tools/audit-zfight.mjs`):

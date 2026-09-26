@@ -48,7 +48,7 @@ const mockSdk = ({ hang = false, adMs = 120, adFail = false, noAds = false } = {
   check('gameLoadingStart at boot, gameLoadingFinished when the menu is ready', boot.calls.includes('gameLoadingStart') && boot.calls.indexOf('gameLoadingFinished') > boot.calls.indexOf('gameLoadingStart'), boot.calls);
   check('progress comes from localStorage (Poki has no cloud save)', boot.unlocked === 3 && /Level 3/.test(boot.play), { unlocked: boot.unlocked, play: boot.play });
   check('ads are on for Poki', boot.ads === true, boot.ads);
-  check('debug mode on outside Poki frame', boot.debug === true, boot.debug);
+  check('no debug mode unless ?pokidebug=1 is given', boot.debug === false, boot.debug);
 
   // a level start: one commercial break, the game frozen and silent while it runs
   await page.evaluate(() => { WT.game.manual = true; window.__poki.calls.length = 0; });
@@ -147,8 +147,22 @@ const mockSdk = ({ hang = false, adMs = 120, adFail = false, noAds = false } = {
 // ---- 6. the actual upload build: SDK tag in <head>, game.js beside it
 {
   const { browser, page, logs } = await launch({ page: 'poki upload/game/index.html', query: 'nolock', init: mockSdk({}) });
-  const v = await page.evaluate(() => ({ name: WT.platform.name, state: WT.game.state, tag: !!document.querySelector('head script[src*="game-cdn.poki.com/scripts/v2/poki-sdk.js"]'), cg: !!document.querySelector('script[src*="crazygames"]'), calls: window.__poki.calls.slice(0, 2) }));
-  check('upload build: loads game.js, Poki tag in head, no CrazyGames tag', v.state === 'menu' && v.name === 'poki' && v.tag && !v.cg && v.calls.includes('init'), v);
+  const v = await page.evaluate(() => ({
+    name: WT.platform.name, state: WT.game.state,
+    tag: !!document.querySelector('head script[src*="game-cdn.poki.com/scripts/v2/poki-sdk.js"]'),
+    cg: !!document.querySelector('script[src*="crazygames"]'),
+    calls: [...window.__poki.calls],
+    ready: typeof window.pokiReady === 'object',
+    inHtml: [...document.querySelectorAll('head script:not([src])')].some((s) => /PokiSDK\.init\(\)/.test(s.textContent)),
+  }));
+  check('upload build: loads game.js, Poki tag in head, no CrazyGames tag', v.state === 'menu' && v.name === 'poki' && v.tag && !v.cg && v.calls.includes('init'), { ...v, calls: v.calls.slice(0, 4) });
+  check('upload build: index.html itself calls PokiSDK.init(), before the bundle', v.inHtml && v.ready, { inHtml: v.inHtml, ready: v.ready });
+  const once = (n) => v.calls.filter((c) => c === n).length;
+  check('upload build: init, gameLoadingStart and gameLoadingFinished each fire once, in order',
+    once('init') === 1 && once('gameLoadingStart') === 1 && once('gameLoadingFinished') === 1
+    && v.calls.indexOf('init') < v.calls.indexOf('gameLoadingStart')
+    && v.calls.indexOf('gameLoadingStart') < v.calls.indexOf('gameLoadingFinished'), v.calls.slice(0, 5));
+  check('upload build: no debug mode without ?pokidebug=1', !v.calls.includes('setDebug'), v.calls.slice(0, 5));
   check('upload build: no page errors', logs.filter((l) => l.startsWith('pageerror')).length === 0, '');
   await browser.close();
 }

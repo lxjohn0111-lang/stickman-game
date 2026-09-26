@@ -14,7 +14,27 @@ const dev = process.argv.includes('--dev');
 // is on the page. Editing one portal's adapter can't affect the other build.
 const PORTALS = [
   { dir: 'crazygames upload', sdk: 'https://sdk.crazygames.com/crazygames-sdk-v3.js' },
-  { dir: 'poki upload', sdk: 'https://game-cdn.poki.com/scripts/v2/poki-sdk.js' },
+  // Poki starts its SDK from the page itself, the way Poki's own HTML5 guide
+  // shows, so init() runs as soon as the page does instead of waiting for the
+  // game bundle to parse, and a look at index.html shows the integration.
+  // src/platforms/poki.js waits for window.pokiReady.
+  {
+    dir: 'poki upload',
+    sdk: 'https://game-cdn.poki.com/scripts/v2/poki-sdk.js',
+    head: `<script>
+  window.pokiReady = (function () {
+    if (typeof PokiSDK === 'undefined') return Promise.resolve(false);
+    try {
+      if (/[?&]pokidebug=1/.test(location.search) && PokiSDK.setDebug) PokiSDK.setDebug(true);
+      return Promise.resolve(PokiSDK.init()).then(function () {
+        if (PokiSDK.gameLoadingStart) PokiSDK.gameLoadingStart();
+        window.pokiLoadingStarted = true;
+        return true;
+      }).catch(function () { return false; });
+    } catch (e) { return Promise.resolve(false); }
+  })();
+</script>`,
+  },
 ];
 
 
@@ -45,13 +65,13 @@ if (watch) {
 // A portal build: '<portal> upload/game/' holds exactly the files to upload
 // (index.html + game.js). It is index.html with that portal's SDK loaded first
 // in <head>; src/platform.js picks it up at boot.
-function packagePortal({ dir, sdk }) {
+function packagePortal({ dir, sdk, head = '' }) {
   let html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
   const tag = '<script src="dist/game.js" onerror="window.__wtBootFail && window.__wtBootFail()"></script>';
   const missing = /The game script \(dist\/game\.js\) did not load\.[^']*'/;
   if (!html.includes(tag) || !missing.test(html)) throw new Error('index.html markers not found');
   html = html
-    .replace('<meta charset="utf-8">', () => `<meta charset="utf-8">\n<script src="${sdk}"></script>`)
+    .replace('<meta charset="utf-8">', () => `<meta charset="utf-8">\n<script src="${sdk}"></script>${head ? '\n' + head : ''}`)
     .replace(tag, () => '<script src="game.js" onerror="window.__wtBootFail && window.__wtBootFail()"></script>')
     .replace(missing, () => "The game could not be loaded. Please reload the page.'");
   const out = path.join(root, dir, 'game');
