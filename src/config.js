@@ -120,13 +120,26 @@ export const ROLES = {
   commander: { hp: 950, weapons: ['rifle'], walk: 1.4, run: 3.6, strafe: 2.0, pref: [4, 20], accuracy: 0.85, scale: 1.12, vest: true, cap: true, boss: true, stagger: true },
 };
 
-// Difficulty changes enemy health, accuracy, reaction time, damage and how
-// many optional pickups appear, never the map layout. regenCap is how far
-// health regenerates on its own.
+// Difficulty changes enemy health, accuracy, reaction time, damage, how much
+// the enemies move and how many optional pickups appear, never the map layout.
+//
+//  spread    multiplies the enemy weapon's cone, so above 1 they miss more
+//  react     multiplies how long they take to open fire
+//  awareness multiplies how fast they notice you
+//  move      multiplies enemy walk, run and strafe speed
+//  still     the chance an enemy holds its ground instead of strafing
+//  coverHop  the chance a rifleman changes cover after a burst
+//  regenCap  how far your health regenerates on its own
+//
+// superEasy is the one a fresh install starts on (see src/settings.js): it is
+// meant for children and for a first look at the game, so the enemies mostly
+// shoot wide, take their time about it and stay roughly where they are. Every
+// other difficulty is unchanged, and the player can switch at any time.
 export const DIFFICULTY = {
-  easy: { label: 'Easy', enemyHealth: 0.75, damage: 0.6, spread: 1.5, react: 1.4, awareness: 0.75, bulletSpeed: 0.85, regenCap: 100, pickupTier: 3, score: 0.8 },
-  normal: { label: 'Normal', enemyHealth: 1.0, damage: 1.0, spread: 1.0, react: 1.0, awareness: 1.0, bulletSpeed: 1.0, regenCap: 75, pickupTier: 2, score: 1.0 },
-  hard: { label: 'Hard', enemyHealth: 1.3, damage: 1.4, spread: 0.72, react: 0.72, awareness: 1.35, bulletSpeed: 1.15, regenCap: 50, pickupTier: 1, score: 1.3 },
+  superEasy: { label: 'Super Easy', enemyHealth: 0.5, damage: 0.3, spread: 2.8, react: 2.1, awareness: 0.45, bulletSpeed: 0.65, regenCap: 100, pickupTier: 3, score: 0.6, move: 0.55, still: 0.6, coverHop: 0.15 },
+  easy: { label: 'Easy', enemyHealth: 0.75, damage: 0.6, spread: 1.5, react: 1.4, awareness: 0.75, bulletSpeed: 0.85, regenCap: 100, pickupTier: 3, score: 0.8, move: 1, still: 0.2, coverHop: 0.65 },
+  normal: { label: 'Normal', enemyHealth: 1.0, damage: 1.0, spread: 1.0, react: 1.0, awareness: 1.0, bulletSpeed: 1.0, regenCap: 75, pickupTier: 2, score: 1.0, move: 1, still: 0.2, coverHop: 0.65 },
+  hard: { label: 'Hard', enemyHealth: 1.3, damage: 1.4, spread: 0.72, react: 0.72, awareness: 1.35, bulletSpeed: 1.15, regenCap: 50, pickupTier: 1, score: 1.3, move: 1, still: 0.2, coverHop: 0.65 },
 };
 
 export const SCORE = {

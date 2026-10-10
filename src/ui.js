@@ -389,7 +389,7 @@ export class UI {
     const top = el('div', 'toprow');
     top.appendChild(el('span', 'hint', t('levels.hint')));
     const diffWrap = el('div', '', `<span style="font-size:11px;letter-spacing:.15em;text-transform:uppercase;margin-right:8px">${t('levels.difficulty')}</span>`);
-    diffWrap.appendChild(this._seg('difficulty', [['easy', t('settings.easy')], ['normal', t('settings.normal')], ['hard', t('settings.hard')]]));
+    diffWrap.appendChild(this._seg('difficulty', [['superEasy', t('settings.superEasy')], ['easy', t('settings.easy')], ['normal', t('settings.normal')], ['hard', t('settings.hard')]]));
     top.appendChild(diffWrap);
     panel.appendChild(top);
     const grid = el('div', 'levels');
@@ -495,7 +495,7 @@ export class UI {
     row(t('settings.music'), slider('music', 0, 1, 0.05, pct));
     row(t('settings.sfx'), slider('sfx', 0, 1, 0.05, pct));
     row(t('settings.ambience'), slider('ambience', 0, 1, 0.05, pct));
-    row(t('settings.difficulty'), this._seg('difficulty', [['easy', t('settings.easy')], ['normal', t('settings.normal')], ['hard', t('settings.hard')]]));
+    row(t('settings.difficulty'), this._seg('difficulty', [['superEasy', t('settings.superEasy')], ['easy', t('settings.easy')], ['normal', t('settings.normal')], ['hard', t('settings.hard')]]));
     row(t('settings.quality'), this._seg('quality', [['low', t('settings.low')], ['medium', t('settings.medium')], ['high', t('settings.high')]]));
     // the portal has its own fullscreen control (and forbids a custom one)
     if (!platform.portal && document.fullscreenEnabled) {

@@ -61,7 +61,11 @@ if (watch) {
   await esbuild.build(options);
   packagePages();
   for (const p of PORTALS) packagePortal(p);
-  packageZip('poki upload', 'one-way-out-poki.zip');
+  for (const p of PORTALS) {
+    const tag = p.dir.split(' ')[0];
+    packageZip(p.dir, 'game', `one-way-out-${tag}.zip`);
+    packageZip(p.dir, 'game-onefile', `one-way-out-${tag}-onefile.zip`);
+  }
 }
 
 // A portal build: '<portal> upload/game/' holds exactly the files to upload
@@ -117,13 +121,16 @@ function packagePages() {
   console.log('  onewayout.html + artifact/index.html written');
 }
 
-// Poki wants a zip with index.html at its root and no wrapping directory, so
-// `npm run build` writes it. Doing it here is the point: a zip made by hand
-// after a rebuild is one someone forgets, and the stale one gets uploaded.
-// Written by hand rather than shelled out to `zip`, which isn't everywhere.
-function packageZip(dir, zipName) {
-  const src = path.join(root, dir, 'game');
-  const names = ['index.html', 'game.js']; // index.html first: it is the entry
+// Both portals want a zip with index.html at its root and no wrapping
+// directory: zipping the folder itself puts index.html one level down, and the
+// portal then says it cannot load the game. So `npm run build` writes the zips
+// ready to upload. Doing it here is the point: a zip made by hand after a
+// rebuild is one someone forgets, and the stale one gets uploaded. Written by
+// hand rather than shelled out to `zip`, which isn't everywhere.
+function packageZip(dir, sub, zipName) {
+  const src = path.join(root, dir, sub);
+  // index.html first: it is the entry point, and it must be at the root
+  const names = fs.readdirSync(src).sort((a, b) => (a === 'index.html' ? -1 : b === 'index.html' ? 1 : a.localeCompare(b)));
   const now = new Date();
   const dosTime = ((now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1)) & 0xffff;
   const dosDate = (((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate()) & 0xffff;

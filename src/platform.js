@@ -99,6 +99,10 @@ export const platform = {
   // portal is done; resolves right away when there are no ads here.
   async adBreak() {
     if (!this.adapter || !this.ads || this.adPlaying) return false;
+    // both portals want gameplay stopped before an ad. The breaks the game
+    // offers are all between levels, so it already is; this keeps that true if
+    // one is ever offered from somewhere else.
+    if (this._playing) this.gameplay(false);
     this.adPlaying = true;
     this.muted = true;
     if (this.onSettings) this.onSettings();

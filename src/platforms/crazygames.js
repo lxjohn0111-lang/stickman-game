@@ -14,8 +14,15 @@
 //  * happytime: celebratory moments.
 //  * muted: the portal's "mute audio" setting, which overrides the in-game
 //    volume; onSettings() fires when the player changes it.
-//  * ads: none are requested. To add them, use SDK.ad.requestAd here and set
-//    `ads: true` so the game asks for a break before each level.
+//  * ads: a midgame ad is offered before a level starts, while the loading
+//    card is up, which is the between-levels moment CrazyGames wants them in.
+//    The SDK caps them (roughly one every three minutes) and silently ignores
+//    a request made too soon, so adBreak() treats a request that does not
+//    start playing as "no ad this time" instead of waiting on a callback that
+//    will never come. src/platform.js freezes and silences the game while one
+//    plays. To turn ads off entirely, set `ads: false` below.
+//    Death-card restarts deliberately get no ad: the player's click there has
+//    to go straight back to capturing the mouse.
 
 export const SDK_SCRIPT = 'https://sdk.crazygames.com/crazygames-sdk-v3.js';
 
@@ -25,7 +32,7 @@ export const crazygames = {
   env: 'none',
   portal: false,
   muted: false,
-  ads: false,
+  ads: true,
   onSettings: null,
 
   detect() {
@@ -80,8 +87,44 @@ export const crazygames = {
     this._call((s) => s.game.happytime());
   },
 
-  // No ads on CrazyGames (see the note above).
-  adBreak() { return Promise.resolve(false); },
+  // An ad opportunity. Resolves when CrazyGames is done, or right away when it
+  // decides not to show one, or when anything goes wrong — the game must never
+  // be left frozen behind an ad that is not coming.
+  adBreak() {
+    const sdk = this.sdk;
+    if (!sdk || !sdk.ad || typeof sdk.ad.requestAd !== 'function') return Promise.resolve(false);
+    return new Promise((resolve) => {
+      let settled = false;
+      let started = false;
+      let wait = null;
+      let guard = null;
+      const done = (v) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(wait);
+        clearTimeout(guard);
+        resolve(v);
+      };
+      // Nothing is owed to us: a request made inside the SDK's own cooldown is
+      // dropped without a callback. If nothing has started playing by now,
+      // there is no ad, so carry on.
+      wait = setTimeout(() => { if (!started) done(false); }, 2500);
+      try {
+        sdk.ad.requestAd('midgame', {
+          adStarted: () => {
+            started = true;
+            clearTimeout(wait);
+            // a broken ad must not strand the player on a frozen screen
+            guard = setTimeout(() => done(true), 90000);
+          },
+          adFinished: () => done(true),
+          adError: () => done(false),
+        });
+      } catch (e) {
+        done(false);
+      }
+    });
+  },
 
   // Progress and settings live in the player's account.
   store: {

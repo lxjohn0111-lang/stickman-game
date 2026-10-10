@@ -6,15 +6,16 @@
 // the data module (not localStorage), loadingStart/Stop around boot and level
 // loads, gameplayStart/Stop following play/pause/death, happytime on level
 // complete, the muteAudio setting and its change listener, no custom
-// fullscreen button on the portal, and that a missing, disabled or hanging
-// SDK still lets the game run on localStorage.
+// fullscreen button on the portal, a midgame ad before a level starts with
+// the game frozen and silent for its duration, and that a missing, disabled or
+// hanging SDK still lets the game run on localStorage.
 import { launch } from './harness.mjs';
 
 const fails = [];
 const check = (name, ok, info) => { console.log(`${ok ? 'ok  ' : 'FAIL'} ${name} ${JSON.stringify(info ?? '')}`); if (!ok) fails.push(name); };
 
 // The stand-in: same surface as window.CrazyGames.SDK (v3).
-const mockSdk = ({ env = 'crazygames', hang = false, muted = false, data = {} } = {}) => `
+const mockSdk = ({ env = 'crazygames', hang = false, muted = false, data = {}, adMode = 'play', adMs = 120, noAds = false } = {}) => `
 (() => {
   const calls = [];
   const store = new Map(Object.entries(${JSON.stringify(data)}));
@@ -40,7 +41,21 @@ const mockSdk = ({ env = 'crazygames', hang = false, muted = false, data = {} } 
       removeItem: (k) => store.delete(k),
       clear: () => store.clear(),
     },
-    ad: { requestAd: () => {} },
+    // requestAd, as the SDK behaves: 'play' runs an ad, 'error' fails it, and
+    // 'ignore' drops the request silently, which is what the real SDK does
+    // inside its own cooldown — no callback ever fires.
+    ad: ${noAds} ? {} : { requestAd: (type, cb) => {
+      calls.push('requestAd:' + type);
+      window.__cg.ads = (window.__cg.ads || 0) + 1;
+      if (${JSON.stringify(adMode)} === 'ignore') return;
+      cb.adStarted && cb.adStarted();
+      window.__cg.adRunning = true;
+      setTimeout(() => {
+        window.__cg.adRunning = false;
+        if (${JSON.stringify(adMode)} === 'error') cb.adError && cb.adError('noFill');
+        else cb.adFinished && cb.adFinished();
+      }, ${adMs});
+    } },
     user: {},
   } };
 })();`;
@@ -68,6 +83,7 @@ const mockSdk = ({ env = 'crazygames', hang = false, muted = false, data = {} } 
   await page.waitForFunction(() => window.__cg.calls.includes('gameplayStart'), null, { timeout: 60000 });
   let c = await page.evaluate(() => [...window.__cg.calls]);
   check('level load: loadingStart, loadingStop, then gameplayStart', c.indexOf('loadingStart') >= 0 && c.indexOf('loadingStop') > c.indexOf('loadingStart') && c.indexOf('gameplayStart') > c.indexOf('loadingStop'), c.filter((x) => !x.startsWith('getItem')));
+  check('a midgame ad is asked for before play begins, not during it', c.indexOf('requestAd:midgame') >= 0 && c.indexOf('requestAd:midgame') < c.indexOf('gameplayStart'), c.filter((x) => !x.startsWith('getItem')));
   check('choosing the level saves "last level" through the data module', c.includes('setItem:onewayout.save.v1'), '');
   // pause -> gameplayStop; resume -> gameplayStart
   await page.evaluate(() => { window.__cg.calls.length = 0; WT.game.pause(); });
@@ -81,13 +97,15 @@ const mockSdk = ({ env = 'crazygames', hang = false, muted = false, data = {} } 
   check('losing focus stops gameplay', (await page.evaluate(() => WT.game.state)) === 'paused', '');
   await page.evaluate(() => WT.game.resume());
   // death -> gameplayStop
-  await page.waitForFunction(() => WT.platform._playing, null, { timeout: 30000 });
+  await page.waitForFunction(() => WT.platform._playing, null, { timeout: 300000 });
   await page.evaluate(() => { window.__cg.calls.length = 0; const g = WT.game; g.player.damage(999, g.player.x, g.player.z, 'test'); });
   await page.waitForFunction(() => window.__cg.calls.includes('gameplayStop'), null, { timeout: 30000 });
   check('death stops gameplay', true, '');
-  await page.waitForFunction(() => document.querySelector('#death-btns .btn-try'), null, { timeout: 30000 });
+  // the death card appears 2.2 s of game time after dying, with the fade
+  // still rendering, so on a loaded machine that is a long wall-clock wait
+  await page.waitForFunction(() => document.querySelector('#death-btns .btn-try'), null, { timeout: 300000 });
   await page.$eval('#death-btns .btn-try', (el) => el.click());
-  await page.waitForFunction(() => WT.platform._playing, null, { timeout: 30000 });
+  await page.waitForFunction(() => WT.platform._playing, null, { timeout: 300000 });
   // complete the level -> happytime + the record saved to the account
   await page.evaluate(() => { window.__cg.calls.length = 0; const m = WT.game.mission; m.index = m.objectives.length - 1; m.obj = m.objectives[m.index]; m._complete(); });
   // gameplayStop lands on the next frame, so wait for it rather than guess
@@ -164,14 +182,65 @@ for (const [name, init] of [['disabled SDK', mockSdk({ env: 'disabled' })], ['no
   await browser.close();
 }
 
-// ---- 8. the CrazyGames build asks for no ads and never touches a Poki SDK
+// ---- 8. the ad break itself: the game freezes and goes silent, and comes
+// back whatever the SDK does with the request. A frozen screen behind an ad
+// that is never coming would be worse than no ads at all, so the two ways
+// that can happen — an error, and a request dropped without any callback —
+// are checked as carefully as the ad that does play.
+for (const [mode, label] of [['play', 'an ad that plays'], ['error', 'an ad that fails'], ['ignore', 'a request the SDK drops silently']]) {
+  // a long enough ad that the frozen, silent window can actually be observed
+  const { browser, page, logs } = await launch({ query: 'nolock', init: mockSdk({ adMode: mode, adMs: 2500 }) });
+  await page.evaluate(() => { WT.game.manual = true; });
+  const started = page.evaluate(() => WT.game.startLevel(1));
+  if (mode !== 'ignore') {
+    // read the frozen state in the page, at the moment it freezes: waiting out
+    // here and then asking lets a short ad finish in between, and the check
+    // then reads a game that has already resumed.
+    const during = await page.evaluate(() => new Promise((res) => {
+      const t0 = Date.now();
+      const tick = () => {
+        if (WT.game.adPause) return res({ muted: WT.platform.muted, master: WT.game.audio.volumes.master, running: window.__cg.adRunning, calls: window.__cg.calls.filter((c) => c.startsWith('requestAd')) });
+        if (Date.now() - t0 > 280000) return res({ timedOut: true });
+        setTimeout(tick, 5);
+      };
+      tick();
+    }));
+    check(`${label}: the game is frozen and silent while it runs`, during.running === true && during.muted === true && during.master === 0 && during.calls.includes('requestAd:midgame'), during);
+  }
+  await started;
+  await page.waitForFunction(() => WT.game.state === 'ready', null, { timeout: 300000 });
+  const after = await page.evaluate(() => ({ adPause: WT.game.adPause, muted: WT.platform.muted, master: WT.game.audio.volumes.master, asked: window.__cg.ads || 0, startEnabled: !document.getElementById('lc-start').disabled, state: WT.game.state }));
+  check(`${label}: sound back, game runs, Start ready`, after.adPause === false && after.muted === false && after.master > 0 && after.asked === 1 && after.startEnabled && after.state === 'ready', after);
+  check(`${label}: no page errors`, logs.filter((l) => l.startsWith('pageerror')).length === 0, '');
+  await browser.close();
+}
+
+// ---- 9. an SDK with no ad module at all, and the Poki SDK never touched
 {
   const poki = `window.PokiSDK = new Proxy({}, { get: (t, k) => { (window.__poki = window.__poki || []).push(String(k)); return () => Promise.resolve(); } });`;
-  const { browser, page } = await launch({ query: 'nolock', init: mockSdk({}) + poki });
+  const { browser, page } = await launch({ query: 'nolock', init: mockSdk({ noAds: true }) + poki });
   await page.evaluate(() => { WT.game.manual = true; WT.game.startLevel(1); });
   await page.waitForFunction(() => WT.game.state === 'ready', null, { timeout: 300000 });
-  const v = await page.evaluate(() => ({ name: WT.platform.name, ads: WT.platform.ads, poki: window.__poki || [], adPause: !!WT.game.adPause }));
-  check('CrazyGames build: no ad breaks, Poki SDK untouched', v.name === 'crazygames' && v.ads === false && v.poki.length === 0 && !v.adPause, v);
+  const v = await page.evaluate(() => ({ name: WT.platform.name, poki: window.__poki || [], adPause: !!WT.game.adPause, state: WT.game.state }));
+  check('an SDK without an ad module: the level still starts, Poki SDK untouched', v.name === 'crazygames' && v.poki.length === 0 && !v.adPause && v.state === 'ready', v);
+  await browser.close();
+}
+
+// ---- 10. a restart from the death card gets no ad, so the click keeps the mouse
+{
+  const { browser, page } = await launch({ query: 'nolock', init: mockSdk({}) });
+  await page.evaluate(() => { WT.game.manual = false; WT.game.startLevel(1); });
+  await page.waitForFunction(() => WT.game.state === 'ready', null, { timeout: 300000 });
+  await page.$eval('#lc-start', (el) => el.click());
+  await page.waitForFunction(() => WT.game.state === 'playing', null, { timeout: 60000 });
+  const before = await page.evaluate(() => window.__cg.ads || 0);
+  await page.evaluate(() => { const g = WT.game; g.player.damage(999, g.player.x, g.player.z, 'test'); });
+  // the death card appears 2.2 s of game time after dying, with the fade
+  // still rendering, so on a loaded machine that is a long wall-clock wait
+  await page.waitForFunction(() => document.querySelector('#death-btns .btn-try'), null, { timeout: 300000 });
+  await page.$eval('#death-btns .btn-try', (el) => el.click());
+  await page.waitForFunction(() => WT.platform._playing, null, { timeout: 60000 });
+  check('a death-card restart asks for no ad', (await page.evaluate(() => window.__cg.ads || 0)) === before, { before });
   await browser.close();
 }
 

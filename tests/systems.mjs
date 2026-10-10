@@ -110,6 +110,9 @@ r = await page.evaluate(() => {
   const g = WT.game, P = g.player;
   H.calm();
   const out = {};
+  // the regeneration limit is a difficulty setting, so say which one rather
+  // than leaning on whichever is the default
+  g.settings.difficulty = 'normal'; g.applySettings(false);
   P.health = 100; P.lastDamage = -99;
   P.damage(60, P.x + 5, P.z, 'test');
   const at40 = P.health;
@@ -282,6 +285,42 @@ r = await page.evaluate(() => {
   return { moved: +moved.toFixed(2), afterStop: +(b.x - x1).toFixed(2) };
 });
 check('conveyor carries the player; control stops it', r.moved > 2.5 && Math.abs(r.afterStop) < 0.05, r);
+
+// ---------------------------------------------------------------- Super Easy is the default, and is actually easier
+r = await page.evaluate(() => {
+  const g = WT.game;
+  const D = WT.DIFFICULTY;
+  // what a fresh install starts on: no saved settings at all
+  const fresh = WT.SETTINGS_DEFAULTS.difficulty;
+  // the knobs, as the enemies actually see them
+  const knobs = {};
+  for (const k of Object.keys(D)) {
+    g.settings.difficulty = k; g.applySettings(false);
+    knobs[k] = { spread: g.diff.spread, react: g.diff.react, move: g.diff.move, still: g.diff.still, coverHop: g.diff.coverHop, damage: g.diff.damage, regenCap: g.diff.regenCap };
+  }
+  // the movement multiplier has to reach the enemies' own speeds
+  g.settings.difficulty = 'superEasy'; g.applySettings(false);
+  const slow = g.enemies._make({ key: 'tse', role: 'smg', x: 0, y: 0, z: 0, yaw: 0 }).R;
+  g.settings.difficulty = 'normal'; g.applySettings(false);
+  const full = g.enemies._make({ key: 'tn', role: 'smg', x: 0, y: 0, z: 0, yaw: 0 }).R;
+  // and an unknown saved name must not leave the game without a difficulty
+  const bogus = (() => { g.settings.difficulty = 'nonsense'; g.applySettings(false); return g.diff; })();
+  g.settings.difficulty = 'normal'; g.applySettings(false);
+  return { fresh, knobs, speeds: { slowRun: +slow.run.toFixed(2), fullRun: +full.run.toFixed(2), slowStrafe: +slow.strafe.toFixed(2), fullStrafe: +full.strafe.toFixed(2) }, bogus: bogus && bogus.label, order: Object.keys(D) };
+});
+check('a fresh install starts on Super Easy', r.fresh === 'superEasy', { fresh: r.fresh });
+check('all four difficulties are offered, easiest first', r.order.join() === 'superEasy,easy,normal,hard', r.order);
+check('Super Easy enemies shoot wider and slower to react than Easy',
+  r.knobs.superEasy.spread > r.knobs.easy.spread && r.knobs.superEasy.react > r.knobs.easy.react && r.knobs.superEasy.damage < r.knobs.easy.damage, r.knobs);
+check('Super Easy enemies move less: slower, and more likely to hold their ground',
+  r.knobs.superEasy.move < 1 && r.knobs.superEasy.still > r.knobs.easy.still && r.knobs.superEasy.coverHop < r.knobs.easy.coverHop, r.knobs);
+check('the movement multiplier reaches the enemies themselves',
+  r.speeds.slowRun < r.speeds.fullRun && r.speeds.slowStrafe < r.speeds.fullStrafe, r.speeds);
+check('Easy, Normal and Hard are unchanged',
+  r.knobs.easy.spread === 1.5 && r.knobs.normal.spread === 1 && r.knobs.hard.spread === 0.72
+  && r.knobs.easy.move === 1 && r.knobs.normal.move === 1 && r.knobs.hard.move === 1
+  && r.knobs.normal.regenCap === 75 && r.knobs.hard.regenCap === 50, r.knobs);
+check('an unknown saved difficulty still leaves the game playable', !!r.bogus, { bogus: r.bogus });
 
 const errs = logs.filter((l) => l.startsWith('pageerror'));
 check('no page errors', errs.length === 0, errs.slice(0, 3));

@@ -18,7 +18,7 @@ import { Mission, LEVEL_COUNT } from './mission.js';
 import { Endless } from './endless.js';
 import { UI } from './ui.js';
 import { DIFFICULTY } from './config.js';
-import { settings, loadSettings, saveSettings, loadStyle, saveStyle } from './settings.js';
+import { settings, loadSettings, saveSettings, loadStyle, saveStyle, DEFAULTS as SETTINGS_DEFAULTS } from './settings.js';
 import { progress, loadProgress, saveProgress, resetProgressForTests } from './save.js';
 import { makeSkyTexture, makeBeltTexture } from './textures.js';
 import { t } from './i18n.js';
@@ -937,7 +937,7 @@ async function boot() {
   cache.dropLegacy('waythrough.preview.');
   try {
     const game = new Game();
-    window.WT = { game, snapshot: () => game.snapshot(), THREE, HOLD, progress, resetProgress: resetProgressForTests, t, platform, handwrite };
+    window.WT = { game, snapshot: () => game.snapshot(), THREE, HOLD, progress, resetProgress: resetProgressForTests, t, platform, handwrite, DIFFICULTY, SETTINGS_DEFAULTS };
   } catch (err) {
     console.error(err);
     platform.error(err);

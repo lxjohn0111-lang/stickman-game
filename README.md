@@ -1,6 +1,6 @@
 # One Way Out
 
-A first-person stickman shooter campaign for the browser: eight levels, three difficulties, Endless Mode, and two visual styles you can switch at any moment (Neobrutalist by default, Classic ink-on-paper as the alternative). It is built for portals like CrazyGames and Poki: it's playable within two clicks, it works with keyboard and mouse or with touch controls on phones and tablets, it pauses on focus loss, and it saves progress through the CrazyGames SDK's data module, or localStorage on Poki and offline.
+A first-person stickman shooter campaign for the browser: eight levels, four difficulties (Super Easy by default, so children can enjoy it too), Endless Mode, and two visual styles you can switch at any moment (Neobrutalist by default, Classic ink-on-paper as the alternative). It is built for portals like CrazyGames and Poki: it's playable within two clicks, it works with keyboard and mouse or with touch controls on phones and tablets, it pauses on focus loss, and it saves progress through the CrazyGames SDK's data module, or localStorage on Poki and offline.
 
 (The game was called *Way Through* before; saves from that version carry over.)
 
@@ -10,9 +10,9 @@ Everything is built at load time. The geometry is boxes, cylinders and cones out
 
 | How | What to open |
 | --- | --- |
-| CrazyGames | The folder `crazygames upload/`: `game/` holds the two files to upload (with the CrazyGames SDK), next to the covers, preview videos, description, controls and an upload guide (in Hungarian). |
-| Poki | The folder `poki upload/`: `game/` holds the two files to upload (with the Poki SDK), next to the description, controls and an upload guide (in Hungarian). |
-| Either portal, one file | `<portal> upload/game-onefile/index.html`, the same build with the bundle inlined. A fallback for an upload that ends up not serving `game.js`: there is no second file to lose. |
+| CrazyGames | `one-way-out-crazygames.zip` — the file to upload, with `index.html` at the zip root. `crazygames upload/` holds the same build unzipped, plus the covers, preview videos, description, controls and an upload guide (in Hungarian). |
+| Poki | `one-way-out-poki.zip`, likewise; `poki upload/` holds it unzipped with the description, controls and guide. |
+| Either portal, one file | `one-way-out-<portal>-onefile.zip` (or `<portal> upload/game-onefile/index.html`), the same build with the bundle inlined. A fallback for an upload that ends up not serving `game.js`: there is no second file to lose. |
 | Offline, one file | `onewayout.html`, which has the game script inlined. Double-click it; nothing else is needed. |
 | Offline, from the repo | `index.html`, which loads `dist/game.js` (committed). Keep the `dist/` folder next to it. If the script really fails to load, the page names the missing file instead of loading forever; a download that is merely slow is left alone. |
 | Local server | `node server.js` → http://localhost:8080 (`node server.js 3000` for another port) |
@@ -63,7 +63,9 @@ A first run is designed to take about 45 to 60 minutes, and each level about 5 t
 ### Progression and saving
 
 - **Play / Continue** starts the latest unlocked level. **Level Select** shows a preview rendered from the level itself, plus name, best score, best time, stars and secrets. Levels unlock in order, and finished levels can be replayed.
-- **Easy / Normal / Hard** change enemy health, accuracy, reaction time, damage, the number of optional pickups and how far health regenerates (100 / 75 / 50). They never change the layout.
+- **Super Easy / Easy / Normal / Hard** change enemy health, accuracy, reaction time, damage, how much the enemies move, the number of optional pickups and how far health regenerates (100 / 100 / 75 / 50). They never change the layout, and the player can switch at any time from Level Select or Settings.
+  - **Super Easy** is what a fresh install starts on, so a child or a first-time player is not thrown in at the deep end: the enemies' aim cone is 2.8&times; wider, so most of their fire goes wide; they take about twice as long to open fire and notice you less than half as fast; their bullets are slower and do 30% damage; they have half the health; and they stay roughly where they are — 55% movement speed, a 60% chance of holding their ground instead of strafing, and riflemen change cover after a burst only 15% of the time instead of 65%. Scores on it count 0.6&times;.
+  - The other three are exactly as they were. Score multipliers: 0.6 / 0.8 / 1.0 / 1.3.
 - **Saved** under `onewayout.save.v1`, `onewayout.settings.v1` and `onewayout.style`: unlocked levels, last level, per-level best score, time, stars and secrets, achievements, Endless records, campaign totals, settings and style. On CrazyGames these go through the SDK's data module, so a signed-in player's progress follows their account across devices; elsewhere they go to localStorage. Old `waythrough.*` saves are moved to the new keys once. Level preview images are a cache and always stay in localStorage.
 - **Loading card:** level name, place, objective and a control reminder, with a progress bar while the level builds in stages. Then "Click to start".
 - **Results card:** time, kills, headshots, accuracy, damage taken, secrets and score, with the stars awarded and **Next Level / Replay / Main Menu** buttons.
@@ -115,6 +117,7 @@ Kills are worth 100 and headshots add 50. Each kill multiplies by a combo: +10% 
 - On Level 1 a **controls overlay** stays up until you move or fire.
 - **Auto-pause** when the tab or window loses focus. Resuming waits for a click and a successful pointer lock; if the browser refuses, a "Click to resume" card appears.
 - **Localisation:** every player-facing string lives in `src/i18n.js`, so adding a language is one more table.
+- **How to play** names the starting difficulty and where to change it, so a player who finds Super Easy too gentle is not left hunting for the setting.
 - **Audio:** master, music and effects volume, with music quieter by default. No sound or music plays before the first click. There is a procedural menu theme, plus a separate low-intensity combat loop that comes in while enemies fight you and fades out after.
 - **Fullscreen** toggle, hidden on CrazyGames (the portal has its own, and forbids a custom one) and where the browser can't do it. No context menu and no text selection anywhere in the game.
 - **Quality:** Low, Medium or High changes resolution, shadow-map size, particle and decal counts and outline width, never gameplay. If the frame rate stays below 40 fps for 10 s, a hint suggests a lower setting; the game never changes it for you.
@@ -156,10 +159,14 @@ src/platforms/poki.js        Poki SDK
 ```
 
 `npm run build` writes both upload folders (`crazygames upload/game/` and
-`poki upload/game/`, each `index.html` + `game.js`), and beside each a
+`poki upload/game/`, each `index.html` + `game.js`), beside each a
 `game-onefile/index.html` with the bundle inlined — the same game in one file,
-for an upload that doesn't serve `game.js`. `?platform=crazygames`,
-`?platform=poki` or `?platform=none` forces one while testing.
+for an upload that doesn't serve `game.js` — and the four zips that actually
+get uploaded (`one-way-out-{crazygames,poki}[-onefile].zip`), each with
+`index.html` at the zip root. Both portals need the entry point at the root:
+zipping the folder itself buries it one level down, and the portal then says it
+cannot load the game. `?platform=crazygames`, `?platform=poki` or
+`?platform=none` forces one while testing.
 
 Common to both: the SDK is initialised before anything reads the save (with a
 5 s timeout, so a blocked SDK never stops the game), gameplay start/stop follow
@@ -175,8 +182,15 @@ result screens stop it), and a level win is reported as a happy moment.
 - `loadingStart/Stop` around the boot and every level load.
 - The portal's `muteAudio` setting silences the game, including changes while
   it runs (`addSettingsChangeListener`).
-- No ads are requested. To add them, `SDK.ad.requestAd` goes in `adBreak()`
-  and `ads: true` makes the game offer a break before each level.
+- `SDK.ad.requestAd('midgame', …)` runs before every level start, while the
+  loading card is up — the between-levels moment CrazyGames wants ads in. The
+  game is frozen and silent for its duration and carries on when the ad
+  finishes, errors, or never arrives: the SDK caps midgame ads at roughly one
+  every three minutes and drops a request made inside that window without
+  firing any callback, so a request that has not started playing within 2.5 s
+  is treated as "no ad this time" rather than waited on. Death-card restarts
+  deliberately get no ad, so the player's click goes straight back to
+  capturing the mouse. `ads: false` in the adapter turns them off entirely.
 
 **Poki** (`https://game-cdn.poki.com/scripts/v2/poki-sdk.js`):
 
@@ -213,7 +227,7 @@ onewayout.html          generated: the same page with the script inlined
 crazygames upload/      generated game/ and game-onefile/ builds with the CrazyGames SDK,
                         plus covers, videos, texts, guide
 poki upload/            generated game/ and game-onefile/ builds with the Poki SDK, texts, guide
-one-way-out-poki.zip    generated: poki upload/game/ as the zip Poki wants
+one-way-out-*.zip       generated: what gets uploaded, index.html at the zip root
 artifact/index.html     generated: page body for the hosted preview
 build.mjs               esbuild bundle + the generated pages and both portal builds
 tools/                  store media: covers.mjs (3 covers), video.mjs (preview videos), stage.mjs
@@ -248,7 +262,7 @@ tests/                  Playwright harness, objective bot and test suites
 The browser tests need Playwright with Chromium; SwiftShader WebGL is fine.
 
 ```sh
-npm test                          # boot, systems, pointer lock, UI flows, qualities, mobile, both SDKs, full campaign
+npm test                          # boot, systems, pointer lock, UI flows, qualities, mobile, both SDKs, the upload zips, full campaign
 node tests/systems.mjs            # movement, weapons, health, slots, enemies, checkpoints, styles, quality
 node tests/campaign.mjs           # all 8 levels in sequence through the menus on Normal
                                   # (--from 4 --to 8 to run part of it)
@@ -259,6 +273,7 @@ node tests/mobile.mjs             # touch controls and layout on an emulated pho
 node tests/sdk-crazygames.mjs     # CrazyGames SDK integration against a recording stand-in
 node tests/sdk-poki.mjs           # Poki SDK integration against a recording stand-in
 node tests/boot.mjs               # the page's boot watchdog, against the portal build
+node tests/portal.mjs             # the upload zips, framed cross-origin like a portal
 node tests/views.mjs 3 "x,y,z,yaw,pitch"   # screenshots of a spot in both styles
 ```
 
@@ -317,6 +332,7 @@ The results below come from headless Chromium with SwiftShader.
   - `happytime` fires on level complete.
   - `muteAudio` works both at start and when it changes.
   - The portal has no fullscreen button.
+  - A midgame ad is requested before a level starts, never during play, and the game is frozen and silent (master volume 0) while it runs. Three outcomes were driven: an ad that plays, one that fails with `adError`, and a request the SDK drops without any callback. In all three the game comes back — sound restored, Start ready, level `ready`, no page errors — and an SDK with no `ad` module at all still starts the level. A death-card restart asks for no ad.
   - The upload build in `crazygames upload/game/` loads with the SDK tag in its head.
   - A hanging, disabled or missing SDK falls back to localStorage without errors.
   - Old *Way Through* saves migrate.
@@ -337,6 +353,17 @@ The results below come from headless Chromium with SwiftShader.
   - Coplanar or near-coplanar faces of different materials went from 388 to 0.
 - **Store media** (`tools/`): the covers (1920x1080, 800x1200, 800x800) and both preview videos (1920x1080 and 1080x1620, 18 s at 30 fps, H.264, no audio track) are rendered by the game itself. The autopilot plays real fights in six levels; one clip switches style mid-fight.
 - **Hit effects** (`tools/`, screenshots): the bot fired through a fight on Level 2 in both styles and on Level 7 at night, then the frames were sampled pixel by pixel. No reddish pixel is left on screen (73, 82 and 117 spatter decals and 2 to 5 pools in those frames), and the marks are clearly readable on Classic's white paper as well as on Neo's colours.
+- **Super Easy really is easier** (measured, not assumed): the same six gunmen from Level 1 were rebuilt on each difficulty and the player was stood in front of them with no cover, never moving and never shooting back, for up to 60 s.
+
+  | | seconds alive | enemy hit rate | enemy movement |
+  | --- | --- | --- | --- |
+  | Super Easy | 11.2 s | 28.9% | 3.0 m/s |
+  | Easy | 4.5 s | 40.7% | 8.3 m/s |
+  | Normal | 2.0 s | 48.4% | 12.5 m/s |
+  | Hard | 1.9 s | 40.0%\* | 11.5 m/s |
+
+  \* Hard kills so fast that only 25 shots are fired, so its rate is noise; the shots that land hurt far more. A player who actually moves and shoots back is in no danger on Super Easy, which is the point. `tests/systems.mjs` pins the knobs, that a fresh install starts on Super Easy, that Easy/Normal/Hard are untouched, and that the movement multiplier reaches the enemies' own speeds.
+- **The portal's own conditions** (`tests/portal.mjs`), all 12 passing: each of the four upload zips is checked for `index.html` at its root with no wrapping folder, then extracted, served over HTTP from one origin and framed from another — the way CrazyGames and Poki run a game — and played. With the SDK script served it reaches the menu, detects that portal, starts Level 1 and gets to `playing` with 18 enemies alive, no boot message and no console or page errors; with the SDK script blocked it does the same on localStorage. This is the setup the portal error was reported in, and the game itself is fine in it: nothing here reproduced a failure, which is what pointed at the upload's shape instead.
 - **Boot watchdog** (`tests/boot.mjs`, against the real portal builds), all passing: a `game.js` that never arrives shows a message naming the file; a `game.js` held back for 12 s shows nothing at all and the game still reaches the menu; a normal load shows nothing; and each portal's one-file build reaches the menu without requesting a `game.js` at all. The second check is the bug behind the "The game could not be loaded" screen seen on CrazyGames: the old watchdog gave up after 8 s and printed the error over a game that was merely downloading slowly. The timer is now 45 s, the two cases say different things, and `boot()` clears it the moment the bundle runs. If a portal really is losing `game.js`, the one-file build removes the failure mode.
 - **Pointer lock** (`tests/lock.mjs`): lock on Start, Esc → pause, a refused re-lock → "Click to resume", and a sandboxed iframe → mouse-move fallback.
 - **Performance:** about 50 to 125 draw calls per level in Classic (from the quality run; Neo adds a shadow pass), everything instanced or merged per material role.

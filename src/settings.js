@@ -1,6 +1,7 @@
 // Player settings, persisted through the platform layer (the CrazyGames data
 // module on CrazyGames, localStorage elsewhere).
 import { store } from './platform.js';
+import { DIFFICULTY } from './config.js';
 
 const KEY = 'onewayout.settings.v1';
 const STYLE_KEY = 'onewayout.style';
@@ -14,7 +15,7 @@ export const DEFAULTS = {
   music: 0.35,
   sfx: 1.0,
   ambience: 0.5,
-  difficulty: 'normal',
+  difficulty: 'superEasy', // the gentlest one, so a first run is welcoming
   shake: 1.0,
   viewBob: true,
   quality: 'high',
@@ -42,6 +43,9 @@ export function loadSettings(overrides = {}) {
       }
     } catch (e) { /* corrupted: keep defaults */ }
   }
+  // A difficulty name that no longer exists (an old or hand-edited save) falls
+  // back to the default rather than to whatever the lookup would miss later.
+  if (!DIFFICULTY[settings.difficulty]) settings.difficulty = DEFAULTS.difficulty;
   return settings;
 }
 

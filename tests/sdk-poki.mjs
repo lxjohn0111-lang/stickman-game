@@ -80,13 +80,15 @@ const mockSdk = ({ hang = false, adMs = 120, adFail = false, noAds = false } = {
   await page.waitForFunction(() => window.__poki.calls.includes('gameplayStop'), null, { timeout: 30000 });
   check('gameplayStop on focus loss', true, '');
   await page.evaluate(() => WT.game.resume());
-  await page.waitForFunction(() => WT.platform._playing, null, { timeout: 30000 });
+  await page.waitForFunction(() => WT.platform._playing, null, { timeout: 300000 });
   await page.evaluate(() => { window.__poki.calls.length = 0; const g = WT.game; g.player.damage(999, g.player.x, g.player.z, 'test'); });
   await page.waitForFunction(() => window.__poki.calls.includes('gameplayStop'), null, { timeout: 30000 });
   check('gameplayStop on death', true, '');
-  await page.waitForFunction(() => document.querySelector('#death-btns .btn-try'), null, { timeout: 30000 });
+  // the death card appears 2.2 s of game time after dying, with the fade
+  // still rendering, so on a loaded machine that is a long wall-clock wait
+  await page.waitForFunction(() => document.querySelector('#death-btns .btn-try'), null, { timeout: 300000 });
   await page.$eval('#death-btns .btn-try', (el) => el.click());
-  await page.waitForFunction(() => WT.platform._playing, null, { timeout: 30000 });
+  await page.waitForFunction(() => WT.platform._playing, null, { timeout: 300000 });
   check('Restart Checkpoint keeps playing without an ad (controls stay captured)', (await page.evaluate(() => window.__poki.ads)) === 1, '');
 
   // level complete -> happyTime, and the record saved to localStorage

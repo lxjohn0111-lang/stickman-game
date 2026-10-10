@@ -37,6 +37,23 @@ const HIDE = new THREE.Matrix4().makeScale(0, 0, 0);
 const CIVILIAN = { hp: 100, weapons: [], walk: 1.5, run: 3.3, strafe: 0, pref: [0, 0], accuracy: 1, civilian: true };
 const roleDef = (r) => (r === 'civilian' ? CIVILIAN : ROLES[r] || ROLES.smg);
 
+// The role definition an enemy gets, with the difficulty's movement
+// multiplier already in it. The definitions are shared between every enemy of
+// a role, so a scaled one has to be a copy; they are cached per role and
+// multiplier, so switching difficulty between levels just picks another one.
+const _slowRoles = new Map();
+function roleDefFor(role, move) {
+  if (!(move > 0) || move === 1) return roleDef(role);
+  const key = `${role}@${move}`;
+  let R = _slowRoles.get(key);
+  if (!R) {
+    const base = roleDef(role);
+    R = { ...base, walk: base.walk * move, run: base.run * move, strafe: base.strafe * move };
+    _slowRoles.set(key, R);
+  }
+  return R;
+}
+
 const rand = (a, b) => a + Math.random() * (b - a);
 const angDiff = (a, b) => { const d = b - a; return Math.atan2(Math.sin(d), Math.cos(d)); };
 
@@ -224,7 +241,7 @@ export class Enemies {
 
   _make(sp) {
     const g = this.game;
-    const R = roleDef(sp.role);
+    const R = roleDefFor(sp.role, g.diff.move);
     const k = R.scale || 1;
     const body = { x: sp.x, y: sp.y, z: sp.z, vx: 0, vy: 0, vz: 0, r: ENEMY.radius * k, h: ENEMY.height * k, grounded: true, stepH: 0.36, jumping: false, ex: 0, ez: 0 };
     const id = this.nextId++;
@@ -562,7 +579,7 @@ export class Enemies {
           e.shotCd += ew.interval;
           if (e.burstLeft === 0) {
             e.burstCd = rand(ew.pause[0], ew.pause[1]);
-            if (R.coverHop && !e.perch && Math.random() < 0.65) this._coverHop(e);
+            if (R.coverHop && !e.perch && Math.random() < (g.diff.coverHop ?? 0.65)) this._coverHop(e);
           }
         }
       } else {
@@ -605,9 +622,11 @@ export class Enemies {
     // strafe, keep a comfortable distance
     e.strafeT -= dt;
     if (e.strafeT <= 0) {
+      // `still` is the chance of holding the spot; the rest splits left/right
+      const still = g.diff.still ?? 0.2;
       const r = Math.random();
-      e.strafeDir = r < 0.4 ? -1 : r < 0.8 ? 1 : 0;
-      e.strafeT = rand(0.8, 2.0);
+      e.strafeDir = r < still ? 0 : r < still + (1 - still) / 2 ? -1 : 1;
+      e.strafeT = rand(0.8, 2.0) * (e.strafeDir === 0 ? 1.6 : 1);
     }
     const inv = 1 / Math.max(distP, 0.01);
     const nx = dxp * inv, nz = dzp * inv;

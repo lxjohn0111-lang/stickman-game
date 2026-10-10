@@ -4,8 +4,10 @@ Ebben a mappában minden megvan, ami a Poki fejlesztői portálra (developers.po
 
 | Mit | Hova |
 | --- | --- |
-| `game/` mappa tartalma: `index.html` + `game.js` | A játék fájljai. Az `index.html` legyen a gyökérben, a `game.js` mellette. Kb. 1,1 MB, 2 fájl. |
-| `game-onefile/index.html` | **Tartalék**, ha a feltöltés után a portálon nem indul el a játék: ugyanez a build egyetlen fájlban, a `game.js` bele van fordítva. Nincs mellette semmi, ami elveszhet. |
+| **`one-way-out-poki.zip`** (a repó gyökerében) | **Ezt töltsd fel.** Az `index.html` a zip gyökerében, burkoló mappa nélkül, ahogy a Poki kéri. |
+| `one-way-out-poki-onefile.zip` | **Tartalék**, ha a feltöltés után nem indul el a játék: ugyanez egyetlen `index.html`-ben, a `game.js` bele van fordítva. Nincs benne második fájl, ami elveszhet. |
+| `game/` mappa tartalma: `index.html` + `game.js` | Ugyanaz kibontva (a Poki Inspectorába ezt a mappát lehet betölteni). |
+| `game-onefile/index.html` | A tartalék kibontva, egy fájl. |
 | `description.txt` | Rövid és hosszú leírás (angol) |
 | `controls.txt` | Irányítás (billentyűzet + egér, érintés) |
 
@@ -40,8 +42,8 @@ Ha az SDK nem érhető el (reklámblokkoló, hálózati hiba), a játék 5 máso
 
 A Poki zipet vár, amiben az `index.html` **a gyökérben** van, burkoló mappa nélkül. A kész zip a repó gyökerében: `one-way-out-poki.zip` (315 KB, benne `index.html` + `game.js`). A `node tests/sdk-poki.mjs` ki is bontja ezt a zipet, és abból indítja el a játékot, szóval ha a zip elavult a build után, az a teszten elhasal, nem a portálon.
 
-Újragenerálni: elég az `npm run build`, az a zipet is megírja a `game/` mappából,
-szóval nem tud elavulni.
+Újragenerálni: elég az `npm run build`, az mind a négy zipet megírja a `game/` és
+`game-onefile/` mappákból, szóval nem tud elavulni.
 
 ## Tesztelés feltöltés előtt
 
@@ -50,6 +52,7 @@ npm run build              # újragenerálja a game/ mappát a src/-ből
 node tests/sdk-poki.mjs    # Poki SDK-integráció egy SDK-utánzattal
 node tests/mobile.mjs      # érintéses irányítás telefon-emulációban
 node tests/boot.mjs        # a betöltésfigyelő, és hogy az egyfájlos build magában is elindul
+node tests/portal.mjs      # a feltöltendő zip kibontva, iframe-ben, mint a portálon
 ```
 
 A Poki Inspectorával a `game/` mappát lehet betölteni.
