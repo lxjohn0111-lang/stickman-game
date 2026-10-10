@@ -924,7 +924,13 @@ class Game {
 }
 
 async function boot() {
+  // the page's boot watchdog: the script is here, so nothing failed
   window.__wtScript = true;
+  try {
+    clearTimeout(window.__wtBootTimer);
+    const m = document.getElementById('boot-msg');
+    if (m) { m.classList.add('hidden'); m.textContent = ''; }
+  } catch (e) { /* no watchdog on this page */ }
   // the SDK must be ready before the saved progress is read from it
   await platform.init();
   platform.loading(true, true);

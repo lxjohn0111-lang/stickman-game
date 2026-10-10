@@ -12,15 +12,16 @@ Everything is built at load time. The geometry is boxes, cylinders and cones out
 | --- | --- |
 | CrazyGames | The folder `crazygames upload/`: `game/` holds the two files to upload (with the CrazyGames SDK), next to the covers, preview videos, description, controls and an upload guide (in Hungarian). |
 | Poki | The folder `poki upload/`: `game/` holds the two files to upload (with the Poki SDK), next to the description, controls and an upload guide (in Hungarian). |
+| Either portal, one file | `<portal> upload/game-onefile/index.html`, the same build with the bundle inlined. A fallback for an upload that ends up not serving `game.js`: there is no second file to lose. |
 | Offline, one file | `onewayout.html`, which has the game script inlined. Double-click it; nothing else is needed. |
-| Offline, from the repo | `index.html`, which loads `dist/game.js` (committed). Keep the `dist/` folder next to it. If the script can't load, the page says so after a few seconds instead of loading forever. |
+| Offline, from the repo | `index.html`, which loads `dist/game.js` (committed). Keep the `dist/` folder next to it. If the script really fails to load, the page names the missing file instead of loading forever; a download that is merely slow is left alone. |
 | Local server | `node server.js` → http://localhost:8080 (`node server.js 3000` for another port) |
 
 Rebuild after editing `src/`:
 
 ```sh
 npm install             # esbuild only; three.js is vendored in vendor/three
-npm run build           # dist/game.js + onewayout.html + artifact/index.html + both portal builds
+npm run build           # dist/game.js + onewayout.html + artifact/index.html + both portal builds + the Poki zip
 npm run watch           # rebuild dist/game.js on change
 ```
 
@@ -91,6 +92,7 @@ Kills are worth 100 and headshots add 50. Each kill multiplies by a combo: +10% 
   - **Civilians:** grey (Classic) or blue (Neo), with their hands up.
   - Fighters are solid black in both styles, so they stand out against Classic's white paper as much as against Neo's colours.
 - **Enemy spawns:** reinforcements come in only through doors, gates, stairways or distant entries that you can't see and that aren't behind you.
+- **Hits are black ink, never red.** The game is rated for ages 12 and up, so nothing on screen reads as blood. A hit throws dark specks that mark the wall behind the victim, and a downed body leaves a dark pool, drawn in the same ink as the bullet holes and the outlines. Both are a shade off the outline black so the marks still read as their own thing, and both are visible on Classic's white paper and on Neo's colours. All of it lives in `src/fx.js` (`SPATTER`, `hitSpatter()`); the only reds left in the game are UI (the low-health bar, the hit-direction edge flash, the headshot marker, the boss bar and the health-kit cross).
 - **Checkpoints** arm when you pass them and activate once the fighting near you has ended, with a "CHECKPOINT" notice. Restoring one gives you full health, the weapons and ammo you had there (topped up to at least three magazines per gun, so a checkpoint reached on an empty gun can't trap you), and the enemies that were still alive then (at their posts). It also restores objective state, pickups, doors, hazards and level state such as power, alarms and the helicopter. Cleared encounters never respawn.
 - **Level machinery:**
   - Conveyor belts carry the player, enemies and dropped guns.
@@ -154,7 +156,9 @@ src/platforms/poki.js        Poki SDK
 ```
 
 `npm run build` writes both upload folders (`crazygames upload/game/` and
-`poki upload/game/`, each `index.html` + `game.js`). `?platform=crazygames`,
+`poki upload/game/`, each `index.html` + `game.js`), and beside each a
+`game-onefile/index.html` with the bundle inlined — the same game in one file,
+for an upload that doesn't serve `game.js`. `?platform=crazygames`,
 `?platform=poki` or `?platform=none` forces one while testing.
 
 Common to both: the SDK is initialised before anything reads the save (with a
@@ -181,7 +185,9 @@ result screens stop it), and a level win is reported as a happy moment.
   parsed and the integration is visible in the page rather than buried in the
   minified bundle. `src/platforms/poki.js` waits for that promise.
 - Poki wants a zip with `index.html` at its root and no wrapping directory;
-  `one-way-out-poki.zip` is exactly that.
+  `one-way-out-poki.zip` is exactly that. `npm run build` writes it from
+  `poki upload/game/` (no `zip` command needed), and `tests/sdk-poki.mjs` plays
+  the game out of the extracted zip, so it cannot go stale unnoticed.
 - Poki has no cloud save, so progress and settings go to localStorage.
 - `gameLoadingStart/Finished` mark the game's own first load only: Poki uses
   that pair for its loading and conversion metrics, so per-level loads must
@@ -204,10 +210,12 @@ result screens stop it), and a level win is reported as a happy moment.
 ```
 index.html              markup + CSS for both styles; boot watchdog; loads dist/game.js
 onewayout.html          generated: the same page with the script inlined
-crazygames upload/      generated game/ build with the CrazyGames SDK, plus covers, videos, texts, guide
-poki upload/            generated game/ build with the Poki SDK, plus texts and a guide
+crazygames upload/      generated game/ and game-onefile/ builds with the CrazyGames SDK,
+                        plus covers, videos, texts, guide
+poki upload/            generated game/ and game-onefile/ builds with the Poki SDK, texts, guide
+one-way-out-poki.zip    generated: poki upload/game/ as the zip Poki wants
 artifact/index.html     generated: page body for the hosted preview
-build.mjs               esbuild bundle + the generated pages and the CrazyGames build
+build.mjs               esbuild bundle + the generated pages and both portal builds
 tools/                  store media: covers.mjs (3 covers), video.mjs (preview videos), stage.mjs
 server.js               tiny static file server
 vendor/three/           three.js r170 + the line/geometry addons used (MIT)
@@ -240,7 +248,7 @@ tests/                  Playwright harness, objective bot and test suites
 The browser tests need Playwright with Chromium; SwiftShader WebGL is fine.
 
 ```sh
-npm test                          # systems, pointer lock, UI flows, qualities, mobile, both SDKs, full campaign
+npm test                          # boot, systems, pointer lock, UI flows, qualities, mobile, both SDKs, full campaign
 node tests/systems.mjs            # movement, weapons, health, slots, enemies, checkpoints, styles, quality
 node tests/campaign.mjs           # all 8 levels in sequence through the menus on Normal
                                   # (--from 4 --to 8 to run part of it)
@@ -250,6 +258,7 @@ node tests/qualities.mjs          # every level at Low, Medium and High
 node tests/mobile.mjs             # touch controls and layout on an emulated phone
 node tests/sdk-crazygames.mjs     # CrazyGames SDK integration against a recording stand-in
 node tests/sdk-poki.mjs           # Poki SDK integration against a recording stand-in
+node tests/boot.mjs               # the page's boot watchdog, against the portal build
 node tests/views.mjs 3 "x,y,z,yaw,pitch"   # screenshots of a spot in both styles
 ```
 
@@ -320,13 +329,15 @@ The results below come from headless Chromium with SwiftShader.
   - A restart from the death card starts play again with no ad break.
   - A rejected ad, an SDK without `commercialBreak`, a hanging init and no SDK at all each still let the game run.
   - The upload build in `poki upload/game/` loads with the Poki tag in its head and no CrazyGames tag, `index.html` itself calls `PokiSDK.init()`, and init, `gameLoadingStart` and `gameLoadingFinished` each fire exactly once in that order.
-  - The zip that gets uploaded was extracted and run: the SDK is detected, the three load events fire and a commercial break runs before the level.
+  - The zip that gets uploaded is extracted and played as part of the suite: its two files sit at the zip root and match the current build (so a zip left behind by a rebuild fails here instead of at Poki), the SDK is detected, the three load events fire and a commercial break runs before the level.
   - With both SDKs on one page, `?platform=` decides and the other SDK is never called.
 - The desktop suites (systems, pointer lock, UI) were re-run after the rename, touch and SDK changes and still pass.
 - **Hitboxes and flicker** (`tools/audit-colliders.mjs`, 2,500 bullet rays per level; `tools/audit-zfight.mjs`):
   - Collider hits with nothing visible within 30 cm dropped from 717 to 38 across the eight levels. Levels 2, 6 and 8 have none. The desert went from 405 (rocks and tents) to 9, all on the three radio masts, whose hit box is deliberately the whole lattice so they are fair targets. The factory went from 58 (furnaces) to 0. The rest are single hits on the few-centimetre corners of stepped ramps and thin posts.
   - Coplanar or near-coplanar faces of different materials went from 388 to 0.
 - **Store media** (`tools/`): the covers (1920x1080, 800x1200, 800x800) and both preview videos (1920x1080 and 1080x1620, 18 s at 30 fps, H.264, no audio track) are rendered by the game itself. The autopilot plays real fights in six levels; one clip switches style mid-fight.
+- **Hit effects** (`tools/`, screenshots): the bot fired through a fight on Level 2 in both styles and on Level 7 at night, then the frames were sampled pixel by pixel. No reddish pixel is left on screen (73, 82 and 117 spatter decals and 2 to 5 pools in those frames), and the marks are clearly readable on Classic's white paper as well as on Neo's colours.
+- **Boot watchdog** (`tests/boot.mjs`, against the real portal builds), all passing: a `game.js` that never arrives shows a message naming the file; a `game.js` held back for 12 s shows nothing at all and the game still reaches the menu; a normal load shows nothing; and each portal's one-file build reaches the menu without requesting a `game.js` at all. The second check is the bug behind the "The game could not be loaded" screen seen on CrazyGames: the old watchdog gave up after 8 s and printed the error over a game that was merely downloading slowly. The timer is now 45 s, the two cases say different things, and `boot()` clears it the moment the bundle runs. If a portal really is losing `game.js`, the one-file build removes the failure mode.
 - **Pointer lock** (`tests/lock.mjs`): lock on Start, Esc → pause, a refused re-lock → "Click to resume", and a sandboxed iframe → mouse-move fallback.
 - **Performance:** about 50 to 125 draw calls per level in Classic (from the quality run; Neo adds a shadow pass), everything instanced or merged per material role.
 

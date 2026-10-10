@@ -1,5 +1,10 @@
-// Instanced visual effects: ink/blood decals, growing blood pools, debris and
-// blood particles, and enemy muzzle flashes. Each is one draw call.
+// Instanced visual effects: ink decals, growing ink pools, debris and spatter
+// particles, and enemy muzzle flashes. Each is one draw call.
+//
+// Hits are drawn as black ink, never red: the game is rated for ages 12 and
+// up, so nothing on screen reads as blood. A hit throws dark specks that mark
+// the wall behind the victim, and a downed body leaves a dark pool, in the
+// same ink the bullet holes and the outlines are drawn in.
 import * as THREE from 'three';
 
 const MAX_DECALS = 420;
@@ -18,8 +23,10 @@ const Z = new THREE.Vector3(0, 0, 1);
 const ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
 
 export const INK = new THREE.Color(0x0d0d0d);
-export const BLOOD = new THREE.Color(0x6e0a0a);
-const BLOOD_DARK = new THREE.Color(0x4a0606);
+// hit spatter and the pool under a body: ink, a shade off the outlines so the
+// marks still read as their own thing
+export const SPATTER = new THREE.Color(0x161616);
+const SPATTER_DARK = new THREE.Color(0x0a0a0a);
 const GLASS_MARK = new THREE.Color(0x8a96a8);
 const GLASS_SHARD = new THREE.Color(0xc8d4e4);
 
@@ -73,7 +80,7 @@ export class FX {
     this.poolMesh = new THREE.InstancedMesh(pg, materials.poolMat, MAX_POOLS);
     this.poolMesh.count = 0;
     this.poolMesh.frustumCulled = false;
-    this.poolMesh.setColorAt(0, BLOOD_DARK);
+    this.poolMesh.setColorAt(0, SPATTER_DARK);
     this.poolMesh.name = 'pools';
     this.pools = [];
     scene.add(this.poolMesh);
@@ -132,7 +139,7 @@ export class FX {
     this.decals.count = Math.min(MAX_DECALS, Math.max(this.decals.count, i + 1));
   }
 
-  // Blood pool that grows under a body.
+  // Dark pool that grows under a downed body.
   pool(x, y, z, radius) {
     if (this.pools.length >= MAX_POOLS) this.pools.shift();
     this.pools.push({ x, y: y + 0.004 + this.pools.length * 0.0004, z, r: 0.05, target: radius, rot: Math.random() * Math.PI * 2 });
@@ -167,19 +174,19 @@ export class FX {
     }
   }
 
-  // Dark red spray along the bullet direction; drops that land leave spots and
-  // the spray splatters the wall behind the victim.
-  bloodSpray(x, y, z, dx, dy, dz, amount = 1) {
+  // Dark spatter along the bullet direction; specks that land leave spots and
+  // the spray marks the wall behind the victim.
+  hitSpatter(x, y, z, dx, dy, dz, amount = 1) {
     const n = Math.round(14 * amount);
     for (let i = 0; i < n; i++) {
       const sp = 2 + Math.random() * 5;
       this.particle(x, y, z,
         dx * sp + (Math.random() - 0.5) * 2.5, dy * sp + Math.random() * 2.2, dz * sp + (Math.random() - 0.5) * 2.5,
-        0.03 + Math.random() * 0.045, 0.8 + Math.random() * 0.5, BLOOD, 1);
+        0.03 + Math.random() * 0.045, 0.8 + Math.random() * 0.5, SPATTER, 1);
     }
     const hit = {};
     if (this.world.raycast(x, y, z, dx, dy, dz, 3.6, 2, hit, true)) {
-      this.decal(hit.x, hit.y, hit.z, hit.nx, hit.ny, hit.nz, (0.55 + Math.random() * 0.45) * (0.7 + amount * 0.3), BLOOD);
+      this.decal(hit.x, hit.y, hit.z, hit.nx, hit.ny, hit.nz, (0.55 + Math.random() * 0.45) * (0.7 + amount * 0.3), SPATTER);
     }
   }
 
@@ -207,7 +214,7 @@ export class FX {
           const floor = p.floorY !== undefined ? p.floorY : (p.floorY = world.heightAt(p.x, p.z, p.y + 0.05));
           if (ny <= floor) {
             if (p.kind === 1) {
-              if (Math.random() < 0.35) this.decal(nx, floor, nz, 0, 1, 0, 0.1 + Math.random() * 0.14, BLOOD);
+              if (Math.random() < 0.35) this.decal(nx, floor, nz, 0, 1, 0, 0.1 + Math.random() * 0.14, SPATTER);
               p.life = 0;
               continue;
             }
@@ -246,7 +253,7 @@ export class FX {
       _q.setFromAxisAngle(_n.set(0, 1, 0), p.rot);
       _m.compose(_v.set(p.x, p.y, p.z), _q, _s.set(p.r * 2, 1, p.r * 2));
       this.poolMesh.setMatrixAt(i, _m);
-      this.poolMesh.setColorAt(i, BLOOD_DARK);
+      this.poolMesh.setColorAt(i, SPATTER_DARK);
     }
     this.poolMesh.count = this.pools.length;
     if (this.pools.length) {

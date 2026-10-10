@@ -1046,7 +1046,7 @@ export class Enemies {
       g.fx.impact(point.x, point.y, point.z, -dir.x, -dir.y, -dir.z, false, 0.7);
       g.audio.play('ricochet', { gain: 0.35, rate: rand(0.9, 1.15) });
     } else {
-      g.fx.bloodSpray(point.x, point.y, point.z, dir.x, dir.y, dir.z, head ? 1.3 : 1);
+      g.fx.hitSpatter(point.x, point.y, point.z, dir.x, dir.y, dir.z, head ? 1.3 : 1);
       if (src === 'player') g.audio.play(head ? 'headshot' : 'flesh', { gain: 0.6 });
     }
     // hit reactions: heavies only stagger after repeated hits, then shrug

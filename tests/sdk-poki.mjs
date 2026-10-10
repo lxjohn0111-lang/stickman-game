@@ -4,10 +4,14 @@
 // Stop following play, pause, focus loss and death, happyTime on a level win,
 // commercialBreak before a level starts with the game frozen and silent for
 // its duration, progress in localStorage (Poki has no cloud save), and that a
-// missing, disabled, hanging or broken SDK still lets the game run.
+// missing, disabled, hanging or broken SDK still lets the game run. The last
+// check extracts one-way-out-poki.zip, the file that is uploaded, and plays the
+// game out of it, so a stale zip fails the suite instead of the submission.
 // The CrazyGames side has its own suite, tests/sdk-crazygames.mjs; neither
 // portal's adapter may affect the other, which check 7 below pins down.
-import { launch } from './harness.mjs';
+import fs from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { launch, root } from './harness.mjs';
 
 const fails = [];
 const check = (name, ok, info) => { console.log(`${ok ? 'ok  ' : 'FAIL'} ${name} ${JSON.stringify(info ?? '')}`); if (!ok) fails.push(name); };
@@ -181,6 +185,35 @@ const mockSdk = ({ hang = false, adMs = 120, adFail = false, noAds = false } = {
   const v2 = await r2.page.evaluate(() => ({ name: WT.platform.name, ads: WT.platform.ads, cg: window.__cg.includes('init'), poki: window.__poki.calls.includes('init') }));
   check('?platform=crazygames: CrazyGames used, Poki SDK never called', v2.name === 'crazygames' && v2.cg && !v2.poki && v2.ads === false, v2);
   await r2.browser.close();
+}
+
+// ---- 8. the zip that is uploaded to Poki: its layout, and the game inside it
+// Poki wants index.html at the zip root with no wrapping directory, and the
+// zip is easy to leave behind after a rebuild, so it is extracted and played
+// rather than trusted.
+{
+  const zip = `${root}/one-way-out-poki.zip`;
+  const out = `${root}/test-output/poki-zip`;
+  fs.rmSync(out, { recursive: true, force: true });
+  fs.mkdirSync(out, { recursive: true });
+  const names = execFileSync('unzip', ['-Z1', zip], { encoding: 'utf8' }).trim().split('\n').sort();
+  check('the zip holds index.html and game.js at its root, nothing else', names.join(',') === 'game.js,index.html', names);
+  execFileSync('unzip', ['-o', '-q', zip, '-d', out]);
+  const same = (n) => fs.readFileSync(`${out}/${n}`).equals(fs.readFileSync(`${root}/poki upload/game/${n}`));
+  check('the zip carries the current build', same('index.html') && same('game.js'), { index: same('index.html'), game: same('game.js') });
+
+  const { browser, page, logs } = await launch({ page: 'test-output/poki-zip/index.html', query: 'nolock', init: mockSdk({}) });
+  await page.evaluate(() => { WT.game.manual = true; });
+  const started = page.evaluate(() => WT.game.startLevel(1));
+  await page.waitForFunction(() => WT.game.adPause === true, null, { timeout: 300000 });
+  await started;
+  await page.waitForFunction(() => WT.game.state === 'ready', null, { timeout: 300000 });
+  const v = await page.evaluate(() => ({ name: WT.platform.name, calls: [...window.__poki.calls], ads: window.__poki.ads, state: WT.game.state }));
+  check('the game in the zip runs: SDK detected, load events fire, a break runs before the level',
+    v.name === 'poki' && v.calls.includes('init') && v.calls.includes('gameLoadingStart') && v.calls.includes('gameLoadingFinished') && v.ads === 1 && v.state === 'ready',
+    { ...v, calls: v.calls.slice(0, 5) });
+  check('the game in the zip has no page errors', logs.filter((l) => l.startsWith('pageerror')).length === 0, '');
+  await browser.close();
 }
 
 console.log(fails.length ? `FAILED: ${fails.join(', ')}` : 'all Poki checks passed');

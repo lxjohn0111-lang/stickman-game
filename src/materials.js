@@ -113,7 +113,6 @@ export const ROLE_DEFS = {
   secret: { c: 0xffd23f, n: 0xffd23f, ne: 0x6a5000 },
   // unlit roles
   signText: { kind: 'basic', c: 0x111111, n: 0xffffff, transparent: true },
-  blood: { kind: 'basic', c: 0x6b0a0a, n: 0x7a0c0c },
   debris: { kind: 'basic', c: 0x111111, n: 0x151515 },
   tracerPlayer: { kind: 'basic', c: 0x111111, n: 0xffe600 },
   tracerEnemy: { kind: 'basic', c: 0x111111, n: 0xff2bd6 },

@@ -5,6 +5,7 @@ Ebben a mappában minden megvan, amit a CrazyGames fejlesztői portálra (develo
 | Mit | Hova a portálon |
 | --- | --- |
 | `game/` mappa tartalma: `index.html` + `game.js` | A játékfájlok feltöltése (HTML5). Az `index.html` legyen a gyökérben, a `game.js` mellette. Kb. 1,1 MB, 2 fájl. |
+| `game-onefile/index.html` | **Tartalék**, csak akkor, ha a kétfájlos feltöltés után a portálon a "The game could not be loaded" hibát látod: ez ugyanaz a játék egyetlen fájlban, a `game.js` bele van fordítva. Egy fájl, kb. 1,1 MB, nincs mellette semmi, amit a portál elveszíthet. |
 | `covers/cover-landscape-1920x1080.png` | Borítókép, fekvő 16:9 |
 | `covers/cover-portrait-800x1200.png` | Borítókép, álló 2:3 |
 | `covers/cover-square-800x800.png` | Borítókép, négyzetes 1:1 |
@@ -38,6 +39,13 @@ Ha az SDK nem érhető el (például reklámblokkoló miatt), a játék 5 másod
 
 Reklámot (midgame / rewarded) a CrazyGames-en a játék **nem** kér. Ha kellene, a `src/platforms/crazygames.js`-ben az `adBreak()` helyére kerülne az `SDK.ad.requestAd` hívás, és az `ads: true` kapcsolóval a játék magától kérne egy reklámot minden pályakezdés előtt (a Pokin ez már így működik).
 
+## Ha a portál azt írja, hogy "The game could not be loaded"
+
+Ez az üzenet akkor jelenik meg, ha a `game.js` nem fut le. Két oka lehet:
+
+1. **A portál nem szolgálja ki a `game.js`-t** (nem a gyökérbe került, vagy kimaradt a feltöltésből). Ilyenkor töltsd fel helyette a `game-onefile/index.html`-t egymagában: abban a játék kódja benne van, így nincs második fájl, ami elveszhet.
+2. **Csak lassú volt a letöltés.** Ezt a játék korábban hibának vette: 8 másodperc után kiírta az üzenetet, pedig a játék utána rendben elindult. Ez javítva van: a figyelő most 45 másodpercig vár, a tényleg hiányzó fájlt megnevezi, a lassút pedig békén hagyja, és amint a kód lefut, az üzenet eltűnik.
+
 ## Tesztelés feltöltés előtt
 
 A portál "Preview" / QA eszközében ellenőrizd, hogy a menü betöltődik, egy pálya elindul, és újratöltés után megmarad a haladás. Helyben:
@@ -46,6 +54,7 @@ A portál "Preview" / QA eszközében ellenőrizd, hogy a menü betöltődik, eg
 npm run build          # újragenerálja a game/ mappát a src/-ből
 node tests/sdk-crazygames.mjs   # SDK-integráció egy SDK-utánzattal
 node tests/mobile.mjs  # érintéses irányítás telefon-emulációban
+node tests/boot.mjs    # a betöltésfigyelő, és hogy az egyfájlos build magában is elindul
 ```
 
 A borítók és videók újragenerálása: `node tools/covers.mjs`, `node tools/video.mjs landscape`, `node tools/video.mjs portrait`.

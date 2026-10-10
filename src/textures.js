@@ -29,7 +29,7 @@ function finish(c, { repeat = false, nearest = false } = {}) {
 }
 
 // Ink splat: a lumpy core, a few spikes and a spray of droplets. White on
-// transparent so instance colours tint it (black ink, dark red blood).
+// transparent so instance colours tint it (black ink for holes and spatter).
 export function makeSplatTexture() {
   const S = 256;
   const c = canvas(S * 2, S * 2);
@@ -78,7 +78,7 @@ export function makeSplatTexture() {
   return finish(c);
 }
 
-// Blood pool: a wide irregular blob.
+// Pool under a downed body: a wide irregular blob, tinted dark by the caller.
 export function makePoolTexture() {
   const S = 256;
   const c = canvas(S, S);

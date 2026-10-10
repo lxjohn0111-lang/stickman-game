@@ -553,16 +553,19 @@
 
 <div id="boot"><div>Loading&hellip;</div><div class="msg hidden" id="boot-msg"></div></div>
 <script>
-  // If the game script never starts (missing dist/game.js, blocked file), say
-  // so instead of showing "Loading" forever.
-  window.__wtBootFail = function () {
+  // If the game never starts, say why instead of showing "Loading" forever.
+  // A download that is merely slow is not a failure: the game clears this
+  // the moment it starts (see boot() in src/main.js), and only a script that
+  // really failed, or a very long wait, puts a message on screen.
+  window.__wtNetMsg = 'The game script (dist/game.js) did not load. Keep index.html next to the dist folder, or open onewayout.html, which has everything in one file.';
+  window.__wtBootFail = function (why) {
     if (window.__wtStarted || window.__wtScript) return;
     var m = document.getElementById('boot-msg');
-    m.textContent = 'The game script (dist/game.js) did not load. Keep index.html next to the dist folder, or open onewayout.html, which has everything in one file.';
+    m.textContent = why === 'net' ? window.__wtNetMsg : 'The game is taking longer than usual to start. Please reload the page.';
     m.classList.remove('hidden');
   };
-  window.__wtBootTimer = setTimeout(window.__wtBootFail, 8000);
+  window.__wtBootTimer = setTimeout(function () { window.__wtBootFail('slow'); }, 45000);
 </script>
-<script src="dist/game.js" onerror="window.__wtBootFail && window.__wtBootFail()"></script>
+<script src="dist/game.js" onerror="window.__wtBootFail && window.__wtBootFail('net')"></script>
 </body>
 </html>
