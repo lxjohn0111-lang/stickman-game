@@ -185,7 +185,9 @@ const mockSdk = ({ hang = false, adMs = 120, adFail = false, noAds = false } = {
   await browser.close();
   const r2 = await launch({ query: 'nolock&platform=crazygames', init: mockSdk({}) + cg });
   const v2 = await r2.page.evaluate(() => ({ name: WT.platform.name, ads: WT.platform.ads, cg: window.__cg.includes('init'), poki: window.__poki.calls.includes('init') }));
-  check('?platform=crazygames: CrazyGames used, Poki SDK never called', v2.name === 'crazygames' && v2.cg && !v2.poki && v2.ads === false, v2);
+  // both portals offer ad breaks now; what matters here is that forcing one
+  // leaves the other portal's SDK completely untouched
+  check('?platform=crazygames: CrazyGames used, Poki SDK never called', v2.name === 'crazygames' && v2.cg && !v2.poki && v2.ads === true, v2);
   await r2.browser.close();
 }
 
