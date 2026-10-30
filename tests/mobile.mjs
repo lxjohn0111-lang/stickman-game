@@ -12,6 +12,14 @@ const shot = (n) => page.screenshot({ path: `${root}/test-output/mobile-${n}.png
 const fails = [];
 const check = (name, ok, info) => { console.log(`${ok ? 'ok  ' : 'FAIL'} ${name} ${JSON.stringify(info ?? '')}`); if (!ok) fails.push(name); };
 const ts = await touchScreen(page);
+// Turning the phone: leave fullscreen first. The game asks for fullscreen when
+// a level starts on a phone, newer Chromium grants it, and a fullscreen window
+// can't be resized.
+const turn = async (width, height) => {
+  await page.evaluate(() => (document.fullscreenElement ? document.exitFullscreen().catch(() => {}) : null));
+  await page.waitForFunction(() => !document.fullscreenElement, null, { timeout: 10000 }).catch(() => {});
+  await page.setViewportSize({ width, height });
+};
 const step = (n) => page.evaluate((n) => { const g = WT.game; for (let i = 0; i < n; i++) g.step(1 / 60); }, n);
 const center = (sel) => page.$eval(sel, (e) => { const r = e.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; });
 // every visible element of `sel` lies inside the viewport (nothing cut off)
@@ -104,6 +112,8 @@ check('joystick walks forward', s1.stick && s1.stick.f > 0.5 && fwd > 1, { fwd: 
 await shot('joystick');
 // to the rim: sprint
 await ts.move([{ id: 1, x: 150, y: 190 }]);
+// the move lands asynchronously: step only once the stick is at the rim
+await page.waitForFunction(() => WT.game.input.stick && WT.game.input.stick.f > 0.95, null, { timeout: 10000 }).catch(() => {});
 await step(20);
 const sp = await page.evaluate(() => ({ sprint: WT.game.player.sprinting, shift: !!WT.game.input.keys.ShiftLeft }));
 check('pushing to the rim sprints', sp.sprint && sp.shift, sp);
@@ -286,7 +296,7 @@ await page.tap('#res-btns button:nth-child(2)');
 await page.waitForFunction(() => WT.game.state === 'ready', null, { timeout: 300000 });
 await page.tap('#lc-start');
 await page.waitForTimeout(100);
-await page.setViewportSize({ width: 390, height: 844 });
+await turn(390, 844);
 innerW = 390; innerH = 844;
 await page.waitForTimeout(400);
 const por = await page.evaluate(() => ({ rotate: getComputedStyle(document.getElementById('rotate')).display, state: WT.game.state }));
@@ -308,7 +318,7 @@ await page.waitForTimeout(200);
 const wait = await page.evaluate(() => ({ rotate: getComputedStyle(document.getElementById('rotate')).display, state: WT.game.state }));
 await shot('portrait');
 check('Resume in portrait asks to turn the device', wait.rotate === 'flex' && wait.state === 'lockwait', wait);
-await page.setViewportSize({ width: 740, height: 360 });
+await turn(740, 360);
 innerW = 740; innerH = 360;
 await page.waitForTimeout(400);
 check('turning back to landscape carries on', (await page.evaluate(() => WT.game.state)) === 'playing', '');
@@ -323,7 +333,7 @@ await shot('small-phone-menu');
 const smm = await fits('#menu .menu-left, #menu-panel');
 check('small phone: menu fits', smm.ok, smm.rs);
 // main menu in portrait: no rotate card, style and settings by tap
-await page.setViewportSize({ width: 390, height: 844 });
+await turn(390, 844);
 innerW = 390; innerH = 844;
 await page.waitForTimeout(400);
 const pm2 = await page.evaluate(() => getComputedStyle(document.getElementById('rotate')).display);

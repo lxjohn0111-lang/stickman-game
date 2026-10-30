@@ -34,7 +34,7 @@ console.log('5 re-locked ', JSON.stringify(await st()));
 await browser.close();
 
 // sandboxed iframe without allow-pointer-lock
-fs.writeFileSync(`${root}/test-output/iframe.html`, `<!doctype html><body style="margin:0"><iframe id="f" sandbox="allow-scripts allow-same-origin" src="../index.html" style="width:1280px;height:720px;border:0"></iframe></body>`);
+fs.writeFileSync(`${root}/test-output/iframe.html`, `<!doctype html><body style="margin:0"><iframe id="f" sandbox="allow-scripts allow-same-origin" src="../index.html?menu" style="width:1280px;height:720px;border:0"></iframe></body>`);
 const { chromium } = (await import('module')).createRequire('/opt/node22/lib/node_modules/')('playwright');
 const b2 = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const p2 = await b2.newPage({ viewport: { width: 1280, height: 720 } });
