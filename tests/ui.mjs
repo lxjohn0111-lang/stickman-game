@@ -56,15 +56,17 @@ await page.$eval('.lcard:nth-child(2)', (el) => el.click());
 await page.waitForFunction(() => WT.game.state === 'ready', null, { timeout: 300000 });
 await shot('loading-card');
 const lc = (await page.textContent('#loadcard')).replace(/\s+/g, ' ');
-check('loading card: name, objective, controls', /container port/i.test(lc) && lc.includes('Objective') && lc.includes('WASD'), lc.slice(0, 200));
+// the card names the level and nothing else to read: no objective paragraph,
+// no list of controls (the level and the onboarding lines do that)
+check('loading card: the level name and nothing to read', /container port/i.test(lc) && !/Objective/i.test(lc) && !/WASD/.test(lc) && lc.length < 80, lc.slice(0, 200));
 await page.$eval('#lc-start', (el) => el.click());
 await page.evaluate(() => { const g = WT.game; if (g.state === 'lockwait') g._enterPlaying(); for (let i = 0; i < 30; i++) g.step(1 / 60); });
 await shot('hud');
-// damage feedback: health bar + trailing segment + direction text
+// damage feedback: health bar + trailing segment + the edge the hit came from
 await page.evaluate(() => { const g = WT.game; g.player.damage(30, g.player.x - 5, g.player.z, 'test'); for (let i = 0; i < 6; i++) g.step(1 / 60); });
-const hud = await page.evaluate(() => ({ num: document.querySelector('#health .num').textContent, fill: document.getElementById('hpfill').style.width, trail: document.getElementById('hptrail').style.width, hit: document.querySelector('#hitdir span').textContent }));
+const hud = await page.evaluate(() => ({ num: document.querySelector('#health .num').textContent, fill: document.getElementById('hpfill').style.width, trail: document.getElementById('hptrail').style.width, edges: ['top', 'bottom', 'left', 'right'].map((k) => +document.getElementById('edge-' + k).style.opacity), words: !!document.getElementById('hitdir') }));
 check('health bar shows "70 / 100" with a trailing segment', hud.num === '70 / 100' && parseFloat(hud.trail) > parseFloat(hud.fill), hud);
-check('hit direction text', /^HIT - (AHEAD|LEFT|RIGHT|BEHIND)$/.test(hud.hit), hud.hit);
+check('a hit flashes the screen edge it came from, with no words', hud.edges.some((o) => o > 0.3) && !hud.words, hud);
 await shot('hud-hit');
 await page.evaluate(() => { const g = WT.game; g.player.damage(50, g.player.x, g.player.z + 5, 'test'); for (let i = 0; i < 10; i++) g.step(1 / 60); });
 const low = await page.evaluate(() => document.getElementById('health').className);

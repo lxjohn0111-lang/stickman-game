@@ -206,7 +206,7 @@ function* build(K) {
   // ------------------------------------------------------------ enemies
   K.spawn(-20, 0, 28, S, 'pistol', { patrol: [[-20, 28], [-4, 28], [-20, 28]] });
   K.spawn(8, 0, 28.5, S, 'smg');
-  K.spawn(-30, 0, 16, E, 'smg', { patrol: [[-30, 16], [-8, 16]] });
+  K.spawn(-30, 0, 16, E, 'runt', { patrol: [[-30, 16], [-8, 16]] });
   K.spawn(28, CT * 2, 21.5, S, 'rifle', { perch: true });
   K.spawn(5, 0, 4, S, 'shotgun', { hold: true });
   K.spawn(-18, CT * 2, 9.5, S, 'rifle', { perch: true });
@@ -220,8 +220,8 @@ function* build(K) {
   K.spawn(15, 0, -20, W, 'smg');
   K.spawn(25, 0, -28, W, 'rifle', { hold: true });
   K.spawn(55, 5.5, -12, W, 'rifle', { perch: true });
-  K.spawn(10, 0, -34, W, 'smg', { patrol: [[10, -34], [28, -36], [10, -34]] });
-  K.spawn(2, 0, -44.2, S, 'heavy', { hold: true });
+  K.spawn(10, 0, -34, W, 'runt', { patrol: [[10, -34], [28, -36], [10, -34]] });
+  K.spawn(2, 0, -44.2, S, 'brute', { hold: true });
   K.spawn(-15, CT * 2, -40, E, 'rifle', { perch: true });
   K.spawn(18, CT, -44, W, 'smg', { perch: true });
   K.spawn(-18, CT, -52, E, 'pistol', { perch: true, weapon: 'revolver' });
@@ -259,10 +259,6 @@ function* build(K) {
   K.weapon('shotgun', 1.8, 0.14, 22, 0.4);
   K.weapon('burst', -40, 0.77, -30, 1.2);
   K.weapon('mpistol', 25, 1.13, -12, 0.3);
-  K.area('area.L2.yard', -60, -7.6, 50, 60);
-  K.area('area.L2.warehouse', -44, -34, -8, -8);
-  K.area('area.L2.control', -60, -120, 70, -45);
-  K.area('area.L2.quay', -8, -45, 70, -7.6);
   K.data.arenas.push({ x: 0, y: 0, z: 16, yaw: N, entries: ['yardE', 'yardW', 'wareE'] });
   K.data.arenas.push({ x: 10, y: 0, z: -30, yaw: N, entries: ['gateN1', 'gateN2', 'quayN', 'wareE'] });
   yield 1;
@@ -271,6 +267,7 @@ function* build(K) {
 export default {
   id: 'L2',
   num: 2,
+  newEnemy: 'brute', // teased on Level 1's results card
   bounds: { x0: -80, z0: -120, x1: 90, z1: 70 },
   mapBounds: { x0: -52, x1: 66, z0: -96, z1: 52 },
   par: 420,

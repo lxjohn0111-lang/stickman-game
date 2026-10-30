@@ -11,8 +11,13 @@
 // size and gear: pistol (fast, accurate singles), SMG (aggressive bursts),
 // rifle (changes cover after firing), shotgun (closes in), heavy (bigger,
 // armour vest, staggers after repeated hits but can't be stun-locked),
-// sniper (a red laser for ~1 s before each shot), commander (boss stages).
+// sniper (a red laser for ~1 s before each shot), commander (boss stages),
+// runt (small, quick, big-headed, with a spiky crest: rushes you) and brute
+// (a giant in a horned helmet and shoulder plates who charges).
 // Civilians are grey/blue stickmen with their hands up.
+//
+// Hits land hard: the body flashes, jolts along the shot, and a kill throws
+// the ragdoll with a burst of ink (see FX.killBurst). Ink only, never red.
 import * as THREE from 'three';
 import { mergeGeometries } from '../vendor/three/addons/utils/BufferGeometryUtils.js';
 import { ENEMY, WEAPONS, SNIPER, ROLES, HEADSHOT_MULT, GRAVITY, stepSound } from './config.js';
@@ -127,6 +132,34 @@ function capGeometry() {
   return g;
 }
 
+// Brute: a domed helmet that sits above the eye, with two horns.
+function helmetGeometry() {
+  const dome = new THREE.SphereGeometry(0.185, 16, 8, 0, Math.PI * 2, 0, Math.PI * 0.42).translate(0, 0.07, 0);
+  const rim = new THREE.CylinderGeometry(0.2, 0.2, 0.035, 16).translate(0, 0.12, 0);
+  const horn = (side) => new THREE.ConeGeometry(0.045, 0.22, 8).rotateZ(-side * 1.05).translate(side * 0.24, 0.2, 0);
+  const g = mergeGeometries([dome.toNonIndexed(), rim.toNonIndexed(), horn(-1).toNonIndexed(), horn(1).toNonIndexed()]);
+  return g;
+}
+
+// Brute: big round shoulder plates and a chest plate, worn like the vest.
+function armorGeometry() {
+  const pad = (side) => new THREE.SphereGeometry(0.13, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.55).scale(1.15, 0.8, 1).translate(side * 0.24, 0.22, 0);
+  const parts = [pad(-1).toNonIndexed(), pad(1).toNonIndexed(), new THREE.BoxGeometry(0.34, 0.26, 0.07).translate(0, 0.06, 0.13).toNonIndexed()];
+  return mergeGeometries(parts);
+}
+
+// Runt: a crest of three spikes running front to back over the head.
+function spikeGeometry() {
+  const parts = [];
+  for (const [z, h] of [[0.1, 0.2], [-0.02, 0.27], [-0.13, 0.21]]) {
+    parts.push(new THREE.ConeGeometry(0.062, h, 6).rotateX(-0.45).translate(0, 0.13 + h * 0.38, z).toNonIndexed());
+  }
+  return mergeGeometries(parts);
+}
+
+// Upper body follows a hit's jolt fully, legs barely (see _pose).
+const KNOCK_W = [[0, 1], [1, 0.92], [15, 0.88], [3, 0.88], [6, 0.88], [5, 0.95], [8, 0.95], [2, 0.38], [9, 0.3], [12, 0.3], [10, 0.12], [13, 0.12]];
+
 export class Enemies {
   constructor(game) {
     this.game = game;
@@ -183,6 +216,17 @@ export class Enemies {
     this.caps = mk(cg, mats.get('cap'), 8);
     this.capHull = mk(cg, hull, 8, false);
     this.capHull.instanceMatrix = this.caps.instanceMatrix;
+    // brute helmet + shoulder plates, runt crest, each with an ink hull
+    const hg = helmetGeometry(), ag = armorGeometry(), sg = spikeGeometry();
+    this.helmets = mk(hg, mats.get('bruteGear'), 8);
+    this.helmetHull = mk(hg, hull, 8, false);
+    this.helmetHull.instanceMatrix = this.helmets.instanceMatrix;
+    this.armors = mk(ag, mats.get('bruteGear'), 8);
+    this.armorHull = mk(ag, hull, 8, false);
+    this.armorHull.instanceMatrix = this.armors.instanceMatrix;
+    this.spikes = mk(sg, mats.get('runtCrest'), MAX_E);
+    this.spikeHull = mk(sg, hull, MAX_E, false);
+    this.spikeHull.instanceMatrix = this.spikes.instanceMatrix;
     // sniper aiming lasers (thin red line + dot where it lands)
     const lg = new THREE.CylinderGeometry(0.009, 0.009, 1, 5, 1, true);
     this.lasers = mk(lg, mats.get('laser'), MAX_LASERS, false);
@@ -243,12 +287,13 @@ export class Enemies {
     const g = this.game;
     const R = roleDefFor(sp.role, g.diff.move);
     const k = R.scale || 1;
-    const body = { x: sp.x, y: sp.y, z: sp.z, vx: 0, vy: 0, vz: 0, r: ENEMY.radius * k, h: ENEMY.height * k, grounded: true, stepH: 0.36, jumping: false, ex: 0, ez: 0 };
+    // a brute's collision height stays door-sized; only the drawing is huge
+    const body = { x: sp.x, y: sp.y, z: sp.z, vx: 0, vy: 0, vz: 0, r: ENEMY.radius * k, h: Math.min(ENEMY.height * k, R.maxH || 9), grounded: true, stepH: 0.36, jumping: false, ex: 0, ez: 0 };
     const id = this.nextId++;
     const weapon = sp.weapon || (R.weapons.length ? R.weapons[id % R.weapons.length] : null);
     const hp = R.civilian ? 1e9 : Math.round(R.hp * g.diff.enemyHealth);
     const e = {
-      id, key: sp.key, spawn: sp, role: sp.role, R, k, thick: k > 1.05 ? 1.35 : 1, civilian: !!R.civilian, sniper: !!R.sniper,
+      id, key: sp.key, spawn: sp, role: sp.role, R, k, hs: R.head || 1, thick: R.thick || (k > 1.05 ? 1.35 : 1), civilian: !!R.civilian, sniper: !!R.sniper,
       perch: !!(sp.perch || R.sniper), hold: !!sp.hold, group: sp.group || 'main',
       post: new THREE.Vector3(sp.x, sp.y, sp.z), postYaw: sp.yaw,
       body, yaw: sp.yaw, pitch: 0, weapon,
@@ -262,6 +307,7 @@ export class Enemies {
       ragdoll: null, deathT: 0, pooled: false, suspicious: 0, stuckT: 0, doorWait: 0,
       snipe: { phase: 'ready', t: 0, aim: new THREE.Vector3(), end: new THREE.Vector3(), on: false },
       stage: 0, relocating: false, follow: false, dest: null,
+      knock: new THREE.Vector3(), flashT: 0, chargeT: 0, chargeCd: 2 + Math.random() * 2, chargeHit: false,
     };
     this._pose(e, 0);
     return e;
@@ -303,11 +349,14 @@ export class Enemies {
       e.staggerCd = Math.max(0, e.staggerCd - dt);
       e.staggerAcc = Math.max(0, e.staggerAcc - dt * 45);
       e.kick = Math.max(0, e.kick - dt * 12);
+      e.flashT = Math.max(0, e.flashT - dt);
+      e.knock.multiplyScalar(Math.exp(-dt * 11));
       let desiredX = 0, desiredZ = 0, speed = 0;
       if (e.civilian) {
         [desiredX, desiredZ, speed] = this._civilian(e, dt);
       } else {
-        if (active && P.alive) {
+        // while the tutorial lines up the first shot, nobody sees the player
+        if (active && P.alive && !(g.tutorial && g.tutorial.calm)) {
           e.perceiveT -= dt;
           if (e.perceiveT <= 0) {
             e.perceiveT = 0.1;
@@ -435,8 +484,10 @@ export class Enemies {
     const d = Math.hypot(b.x - cam.x, b.y - cam.y, b.z - cam.z);
     if (d > 16 || this.stepBudget <= 0) return;
     this.stepBudget--;
-    const sp = g.spatialAt(b.x, b.y + 0.2, b.z, (e.moveSpeed > 2.5 ? 0.3 : 0.18) * (e.R.scale ? 1.3 : 1));
-    g.audio.play(stepSound(surf), { ...sp, rate: (e.R.scale ? 0.82 : 1) * rand(0.92, 1.08) });
+    // big ones thud, runts patter
+    const size = e.R.scale || 1;
+    const sp = g.spatialAt(b.x, b.y + 0.2, b.z, (e.moveSpeed > 2.5 ? 0.3 : 0.18) * (size > 1 ? 1.3 : size < 1 ? 0.8 : 1));
+    g.audio.play(stepSound(surf), { ...sp, rate: (size > 1.3 ? 0.7 : size > 1 ? 0.82 : size < 1 ? 1.3 : 1) * rand(0.92, 1.08) });
   }
 
   _canSee(e) {
@@ -467,7 +518,7 @@ export class Enemies {
     e.path = null;
     e.goal = null;
     if (!wasCombat) {
-      const quick = e.R.aggressive || e.role === 'pistol' ? 0.8 : e.R.scale ? 1.1 : 1;
+      const quick = e.R.aggressive || e.role === 'pistol' ? 0.8 : (e.R.scale || 1) > 1 ? 1.1 : 1;
       e.reactT = (fromChase ? rand(0.2, 0.4) : rand(0.4, 0.8)) * g.diff.react * quick;
       e.burstCd = e.reactT;
       e.burstLeft = 0;
@@ -568,7 +619,7 @@ export class Enemies {
     const ty = (e.sees ? P.cam.y - 0.4 : e.lastKnown.y + 1.2) - (e.body.y + 1.35 * e.k);
     const tp = Math.atan2(ty, Math.max(0.5, Math.hypot(tx - e.body.x, tz - e.body.z)));
     e.pitch += (tp - e.pitch) * Math.min(1, dt * 8);
-    const canFire = e.sees && e.reactT <= 0 && off < 0.3 && P.alive && e.stagger <= 0 && !e.relocating;
+    const canFire = e.sees && e.reactT <= 0 && off < 0.3 && P.alive && e.stagger <= 0 && !e.relocating && e.chargeT <= 0;
     if (e.sniper) this._snipe(e, dt, canFire);
     else if (canFire && !hopping) {
       if (e.burstLeft > 0) {
@@ -626,7 +677,8 @@ export class Enemies {
       const still = g.diff.still ?? 0.2;
       const r = Math.random();
       e.strafeDir = r < still ? 0 : r < still + (1 - still) / 2 ? -1 : 1;
-      e.strafeT = rand(0.8, 2.0) * (e.strafeDir === 0 ? 1.6 : 1);
+      // runts skitter: short, jerky changes of direction
+      e.strafeT = (R.jitter ? rand(0.25, 0.7) : rand(0.8, 2.0)) * (e.strafeDir === 0 ? 1.6 : 1);
     }
     const inv = 1 / Math.max(distP, 0.01);
     const nx = dxp * inv, nz = dzp * inv;
@@ -646,6 +698,31 @@ export class Enemies {
       vx += nx * R.run * 0.6; vz += nz * R.run * 0.6;
     }
     if (e.burstLeft > 0) { const k = R.aggressive ? 0.8 : 0.45; vx *= k; vz *= k; }
+    // brute: now and then, a short charge straight at the player. Contact
+    // knocks them back and hurts; stepping aside makes him overshoot.
+    if (R.charge) {
+      e.chargeCd = Math.max(0, e.chargeCd - dt);
+      if (e.chargeT <= 0 && e.chargeCd <= 0 && e.sees && distP > 4 && distP < 16 && e.stagger <= 0) {
+        e.chargeT = 1.35;
+        e.chargeCd = rand(6, 8.5);
+        e.chargeHit = false;
+        e.burstLeft = 0;
+        e.chargeDir = [nx, nz];
+        g.audio.play('roar', this._spatial(e, 0.9));
+      }
+      if (e.chargeT > 0) {
+        e.chargeT -= dt;
+        const sp = R.run * 1.9 * (g.diff.move || 1);
+        vx = e.chargeDir[0] * sp; vz = e.chargeDir[1] * sp;
+        if (!e.chargeHit && distP < e.body.r + 0.75 && Math.abs(e.body.y - P.y) < 1.2) {
+          e.chargeHit = true;
+          e.chargeT = Math.min(e.chargeT, 0.15);
+          P.damage(26 * g.diff.damage, e.body.x, e.body.z, 'enemy');
+          P.body.vx += e.chargeDir[0] * 7; P.body.vz += e.chargeDir[1] * 7;
+          P.shake = Math.max(P.shake, 0.9);
+        }
+      }
+    }
     // don't strafe off ledges / into walls: probe ahead
     const sp = Math.hypot(vx, vz);
     if (sp > 0.1) {
@@ -970,7 +1047,7 @@ export class Enemies {
     L(0, 0.95 + bob, 0, j[J.pelvis]);
     L(0, 1.42 + bob, lean, j[J.chest]);
     L(0, 1.47 + bob, lean + 0.01, j[J.neck]);
-    L(0, 1.63 + bob, lean + 0.02, j[J.head]);
+    L(0, 1.47 + 0.16 * e.hs + bob, lean + 0.02, j[J.head]);
     L(-0.19, 1.39 + bob, lean, j[J.sl]);
     L(0.19, 1.39 + bob, lean, j[J.sr]);
     L(-0.1, 0.92 + bob, 0, j[J.hipl]);
@@ -1001,6 +1078,8 @@ export class Enemies {
     const Rh = mix(lowR, aimR, upR), Lh = mix(lowL, aimL, upL);
     L(Rh[0], Rh[1], Rh[2], j[J.hr]);
     L(Lh[0], Lh[1], Lh[2], j[J.hl]);
+    // a hit's jolt: the upper body follows it, the feet stay put
+    if (e.knock.lengthSq() > 1e-6) for (const [ji, w] of KNOCK_W) j[ji].addScaledVector(e.knock, w);
     const pole = this.tmp[0];
     pole.set(rx * 0.8 - fx * 0.2, -1, rz * 0.8 - fz * 0.2).normalize();
     solveElbow(j[J.sr], j[J.hr], 0.3 * k, 0.29 * k, pole, j[J.er]);
@@ -1038,9 +1117,9 @@ export class Enemies {
       if (tc < -1 || px * px + pz * pz > 1.2 * e.k * e.k) continue;
       const j = e.joints;
       const k = e.k, th = e.thick;
-      const tHead = raySphere(ox, oy, oz, dx, dy, dz, j[J.head], 0.18 * k);
+      const tHead = raySphere(ox, oy, oz, dx, dy, dz, j[J.head], 0.18 * k * e.hs);
       if (tHead >= 0 && tHead < best) { best = tHead; hit = { enemy: e, part: 'head', t: tHead }; }
-      const caps = [[J.pelvis, J.neck, (e.R.vest ? 0.2 : 0.15) * k], [J.sl, J.el, 0.075 * th], [J.el, J.hl, 0.07 * th], [J.sr, J.er, 0.075 * th], [J.er, J.hr, 0.07 * th],
+      const caps = [[J.pelvis, J.neck, (e.R.vest ? 0.2 : 0.15) * k * (e.R.torso ? 1.1 : 1)], [J.sl, J.el, 0.075 * th], [J.el, J.hl, 0.07 * th], [J.sr, J.er, 0.075 * th], [J.er, J.hr, 0.07 * th],
         [J.hipl, J.kl, 0.085 * th], [J.kl, J.fl, 0.075 * th], [J.hipr, J.kr, 0.085 * th], [J.kr, J.fr, 0.075 * th]];
       for (let c = 0; c < caps.length; c++) {
         const [p, q, r] = caps[c];
@@ -1061,6 +1140,11 @@ export class Enemies {
     let dmg = amount * (head ? HEADSHOT_MULT : vest ? 0.7 : 1);
     if (e.relocating) dmg *= 0.5;
     e.health -= dmg;
+    // juice: the body flashes and jolts along the shot (bigger ones less)
+    e.flashT = 0.085;
+    const jolt = (head ? 0.15 : 0.1) / Math.max(0.85, e.k);
+    e.knock.x += dir.x * jolt; e.knock.z += dir.z * jolt;
+    if (e.knock.lengthSq() > 0.09) e.knock.setLength(0.3);
     if (vest) {
       g.fx.impact(point.x, point.y, point.z, -dir.x, -dir.y, -dir.z, false, 0.7);
       g.audio.play('ricochet', { gain: 0.35, rate: rand(0.9, 1.15) });
@@ -1180,14 +1264,17 @@ export class Enemies {
     const pts = e.joints.map((p) => p.clone());
     const prev = pts.map((p) => p.clone());
     const vx = e.body.vx / 120, vz = e.body.vz / 120;
-    const push = (head ? 0.016 : 0.012) / k;
+    // thrown along the shot with a little hop, so a kill reads from afar
+    const push = (head ? 0.026 : 0.019) / k;
     for (let i = 0; i < pts.length; i++) {
       prev[i].x -= vx + dir.x * push * 0.5;
       prev[i].z -= vz + dir.z * push * 0.5;
+      prev[i].y -= 0.0035;
     }
     let hi = 0, hd = Infinity;
     pts.forEach((p, i) => { const d = p.distanceToSquared(point); if (d < hd) { hd = d; hi = i; } });
-    prev[hi].addScaledVector(dir, -0.02 / k);
+    prev[hi].addScaledVector(dir, -0.032 / k);
+    if (cause === 'player' || cause === 'blast') g.fx.killBurst(point.x, point.y, point.z, dir.x, dir.z, head, k);
     prev[J.kl].addScaledVector(e.face, -0.02);
     prev[J.kr].addScaledVector(e.face, -0.02);
     const rest = STICKS.map(([a, b]) => pts[a].distanceTo(pts[b]));
@@ -1303,15 +1390,15 @@ export class Enemies {
     const g = this.game;
     const n = this.list.length;
     const neo = g.style === 'neo';
-    let nv = 0, nc = 0, nl = 0;
+    let nv = 0, nc = 0, nl = 0, nh = 0, na = 0, ns = 0;
     for (let i = 0; i < n; i++) {
       const e = this.list[i];
       const j = e.joints;
-      const th = e.thick, k = e.k;
+      const th = e.thick, k = e.k, hk = k * e.hs;
       for (let s = 0; s < LIMB_SEGS.length; s++) this.limbs.setMatrixAt(i * LIMBS + s, segMatrix(j[LIMB_SEGS[s][0]], j[LIMB_SEGS[s][1]], _m, th));
       const neckTop = this.tmp[5].copy(j[J.head]).lerp(j[J.neck], 0.4);
       this.limbs.setMatrixAt(i * LIMBS + 8, segMatrix(j[J.neck], neckTop, _m, th));
-      this.torso.setMatrixAt(i * 2, segMatrix(j[J.pelvis], j[J.neck], _m, k > 1 ? 1.3 : 1));
+      this.torso.setMatrixAt(i * 2, segMatrix(j[J.pelvis], j[J.neck], _m, e.R.torso || (k > 1 ? 1.3 : 1)));
       this.torso.setMatrixAt(i * 2 + 1, _m.copy(HIDE));
       for (let s = 0; s < JOINT_LIST.length; s++) {
         const p = j[JOINT_LIST[s]];
@@ -1322,10 +1409,12 @@ export class Enemies {
       this.joints.setMatrixAt(i * JOINTS + 12, _m);
       _m.makeScale(1.75 * th, 1.75 * th, 1.75 * th).setPosition(j[J.neck]);
       this.joints.setMatrixAt(i * JOINTS + 13, _m);
-      _m.makeScale(k, k, k).setPosition(j[J.head]);
+      _m.makeScale(hk, hk, hk).setPosition(j[J.head]);
       this.heads.setMatrixAt(i, _m);
-      // per-instance colour
-      _c.setHex(e.civilian ? (neo ? 0x3f7cff : 0x8d929b) : neo ? 0x0c0c0c : 0x0a0a0a);
+      // per-instance colour; a hit flashes the body white (pale grey on
+      // Classic's white paper, so it never vanishes)
+      if (e.flashT > 0 && e.alive) _c.setHex(neo ? 0xffffff : 0xb8b8b8);
+      else _c.setHex(e.civilian ? (neo ? 0x3f7cff : 0x8d929b) : neo ? 0x0c0c0c : 0x0a0a0a);
       for (let s = 0; s < LIMBS; s++) this.limbs.setColorAt(i * LIMBS + s, _c);
       this.torso.setColorAt(i * 2, _c); this.torso.setColorAt(i * 2 + 1, _c);
       for (let s = 0; s < JOINTS; s++) this.joints.setColorAt(i * JOINTS + s, _c);
@@ -1341,22 +1430,22 @@ export class Enemies {
         face.crossVectors(up, side).normalize();
         if (face.lengthSq() < 0.5) face.set(0, 1, 0);
       }
-      const eyePos = this.tmp[9].copy(j[J.head]).addScaledVector(face, 0.152 * k);
-      eyePos.y += 0.035 * k;
+      const eyePos = this.tmp[9].copy(j[J.head]).addScaledVector(face, 0.152 * hk);
+      eyePos.y += 0.035 * hk;
       _q.setFromUnitVectors(this.tmp[10].set(0, 0, 1), face);
-      _m.compose(eyePos, _q, _s.set(k, k, k));
+      _m.compose(eyePos, _q, _s.set(hk, hk, hk));
       this.eyes.setMatrixAt(i, _m);
       const pupil = this.tmp[11].copy(eyePos).addScaledVector(face, 0.008);
       if (e.alive) {
         const P = g.player;
         const look = this.tmp[12].set(P.cam.x - eyePos.x, P.cam.y - eyePos.y, P.cam.z - eyePos.z).normalize();
         const lat = this.tmp[13].copy(look).addScaledVector(face, -look.dot(face));
-        if (e.state !== 'idle' && e.state !== 'patrol') pupil.addScaledVector(lat, 0.03 * k);
+        if (e.state !== 'idle' && e.state !== 'patrol') pupil.addScaledVector(lat, 0.03 * hk);
       } else pupil.y -= 0.02;
-      _m.compose(pupil, _q, _s.set(k, k, k));
+      _m.compose(pupil, _q, _s.set(hk, hk, hk));
       this.pupils.setMatrixAt(i, _m);
-      // torso basis for vest / cap
-      if (e.R.vest || e.R.cap) {
+      // torso basis for vest / cap / brute plates, head basis for helmet / crest
+      if (e.R.vest || e.R.cap || e.R.helmet || e.R.crest) {
         const tUp = this.tmp[3].subVectors(j[J.neck], j[J.pelvis]).normalize();
         const tRight = this.tmp[4].subVectors(j[J.sr], j[J.sl]).normalize();
         const tFwd = this.tmp[15].crossVectors(tUp, tRight).normalize();
@@ -1367,13 +1456,29 @@ export class Enemies {
           _m.scale(_s.set(k, k, k)).setPosition(c);
           this.vests.setMatrixAt(nv++, _m);
         }
+        if (e.R.helmet && na < 8) {
+          const c = _v3.copy(j[J.pelvis]).lerp(j[J.neck], 0.62);
+          _m.makeBasis(tX, tUp, tFwd);
+          _m.scale(_s.set(k, k, k)).setPosition(c);
+          this.armors.setMatrixAt(na++, _m);
+        }
+        const hf = e.alive ? _v2.set(e.face.x, 0, e.face.z) : face;
+        const hx = _v.crossVectors(up, hf).normalize();
+        const hz = this.tmp[14].crossVectors(hx, up).normalize();
         if (e.R.cap && nc < 8) {
-          const hf = e.alive ? _v2.set(e.face.x, 0, e.face.z) : face;
-          const hx = _v.crossVectors(up, hf).normalize();
-          const hz = this.tmp[14].crossVectors(hx, up).normalize();
           _m.makeBasis(hx, up, hz);
           _m.scale(_s.set(k, k, k)).setPosition(_v3.copy(j[J.head]).addScaledVector(up, 0.1 * k));
           this.caps.setMatrixAt(nc++, _m);
+        }
+        if (e.R.helmet && nh < 8) {
+          _m.makeBasis(hx, up, hz);
+          _m.scale(_s.set(hk, hk, hk)).setPosition(j[J.head]);
+          this.helmets.setMatrixAt(nh++, _m);
+        }
+        if (e.R.crest && ns < MAX_E) {
+          _m.makeBasis(hx, up, hz);
+          _m.scale(_s.set(hk, hk, hk)).setPosition(j[J.head]);
+          this.spikes.setMatrixAt(ns++, _m);
         }
       }
       if (e.alive && e.weapon) g.items.pushGun(e.weapon, this._gunMatrix(e, _m));
@@ -1392,8 +1497,11 @@ export class Enemies {
     this.heads.count = this.eyes.count = this.pupils.count = n;
     this.vests.count = this.vestHull.count = nv;
     this.caps.count = this.capHull.count = nc;
+    this.helmets.count = this.helmetHull.count = nh;
+    this.armors.count = this.armorHull.count = na;
+    this.spikes.count = this.spikeHull.count = ns;
     this.lasers.count = this.laserDots.count = nl;
-    for (const m of [this.limbs, this.torso, this.joints, this.heads, this.eyes, this.pupils, this.vests, this.caps, this.lasers, this.laserDots]) m.instanceMatrix.needsUpdate = true;
+    for (const m of [this.limbs, this.torso, this.joints, this.heads, this.eyes, this.pupils, this.vests, this.caps, this.helmets, this.armors, this.spikes, this.lasers, this.laserDots]) m.instanceMatrix.needsUpdate = true;
     for (const m of this.tinted) m.instanceColor.needsUpdate = true;
     for (const [r, src] of this.rims) r.count = src.count;
   }

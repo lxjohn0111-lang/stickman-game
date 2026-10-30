@@ -15,7 +15,10 @@ function blank() {
     hardWon: false,
     achievements: {},
     endless: { bestWave: 0, bestScore: 0 },
-    tutorialSeen: false,
+    tutorialSeen: false, // the first-kill tutorial (tutorial.js)
+    hints: {}, // onboarding lines already shown (hints.js)
+    skin: 'standard', // weapon skin worn (skins.js)
+    skinsSeen: ['standard'], // skins whose unlock has been announced
     campaign: { time: 0, kills: 0, score: 0 },
   };
 }
@@ -32,6 +35,8 @@ export function loadProgress() {
     progress.achievements = d.achievements || {};
     progress.endless = { bestWave: 0, bestScore: 0, ...(d.endless || {}) };
     progress.campaign = { time: 0, kills: 0, score: 0, ...(d.campaign || {}) };
+    progress.hints = d.hints || {};
+    progress.skinsSeen = Array.isArray(d.skinsSeen) ? d.skinsSeen : ['standard'];
   } catch (e) { /* corrupted: start fresh */ }
   return progress;
 }
@@ -43,6 +48,13 @@ export function saveProgress() {
 export function levelRecord(n) {
   if (!progress.levels[n]) progress.levels[n] = { completed: false, bestScore: 0, bestTime: 0, stars: 0, secrets: [false, false, false], noDamage: false };
   return progress.levels[n];
+}
+
+// Stars collected over the whole campaign (24 at most): what unlocks skins.
+export function totalStars() {
+  let n = 0;
+  for (const r of Object.values(progress.levels)) n += r && r.stars ? r.stars : 0;
+  return n;
 }
 
 export function resetProgressForTests() {

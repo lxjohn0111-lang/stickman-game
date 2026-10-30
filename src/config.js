@@ -109,13 +109,21 @@ export const DEFAULT_LOADOUT = { main: 'smg', side: 'pistol' };
 export const SNIPER = { aim: 1.05, lock: 0.25, cooldown: 1.6, damage: 28, spread: 0.004, speed: 62 };
 
 // Enemy roles. Every role keeps the stickman silhouette; heavies are bigger
-// and wear a vest. pref = preferred combat distance [min, max].
+// and wear a vest. pref = preferred combat distance [min, max]. bonus = extra
+// points for the kill.
+//  runt:  small and quick with an oversized head and a spiky crest; rushes in
+//         spraying an auto pistol and skitters side to side (jitter).
+//  brute: a giant in a horned helmet and shoulder plates; slow, tough, and
+//         now and then charges straight at you (contact hurts and shoves).
+//         maxH keeps his collision height door-sized.
 export const ROLES = {
   pistol: { hp: 55, weapons: ['pistol', 'revolver'], walk: 1.8, run: 4.5, strafe: 2.6, pref: [5, 14], accuracy: 0.75 },
   smg: { hp: 80, weapons: ['smg', 'mpistol'], walk: 1.5, run: 4.1, strafe: 2.2, pref: [3, 9], accuracy: 1.0, aggressive: true },
   rifle: { hp: 85, weapons: ['rifle', 'burst'], walk: 1.4, run: 3.4, strafe: 1.8, pref: [9, 26], accuracy: 0.9, coverHop: true },
   shotgun: { hp: 95, weapons: ['shotgun'], walk: 1.5, run: 3.9, strafe: 1.8, pref: [2, 6], accuracy: 1.0, approach: true },
-  heavy: { hp: 280, weapons: ['smg', 'shotgun'], walk: 1.05, run: 2.3, strafe: 1.1, pref: [4, 12], accuracy: 1.0, scale: 1.2, vest: true, stagger: true },
+  heavy: { hp: 280, weapons: ['smg', 'shotgun'], walk: 1.05, run: 2.3, strafe: 1.1, pref: [4, 12], accuracy: 1.0, scale: 1.2, vest: true, stagger: true, bonus: 150 },
+  runt: { hp: 40, weapons: ['mpistol'], walk: 2.4, run: 5.6, strafe: 3.6, pref: [2, 8], accuracy: 1.35, scale: 0.72, head: 1.38, crest: true, jitter: true, aggressive: true, approach: true, bonus: 50 },
+  brute: { hp: 430, weapons: ['shotgun'], walk: 0.95, run: 2.5, strafe: 0.7, pref: [2, 9], accuracy: 1.0, scale: 1.45, head: 0.92, thick: 1.95, torso: 2.0, maxH: 2.05, helmet: true, charge: true, stagger: true, approach: true, bonus: 300 },
   sniper: { hp: 70, weapons: ['rifle'], walk: 1.3, run: 3.0, strafe: 0, pref: [15, 90], accuracy: 1.0, sniper: true },
   commander: { hp: 950, weapons: ['rifle'], walk: 1.4, run: 3.6, strafe: 2.0, pref: [4, 20], accuracy: 0.85, scale: 1.12, vest: true, cap: true, boss: true, stagger: true },
 };

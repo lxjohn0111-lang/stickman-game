@@ -190,9 +190,29 @@ export class FX {
     }
   }
 
-  enemyFlash(x, y, z, size = 0.35) {
+  enemyFlash(x, y, z, size = 0.35, frames = 2) {
     if (this.flashes.length >= MAX_FLASH) this.flashes.shift();
-    this.flashes.push({ x, y, z, s: size, frames: 2, age: 0, rot: Math.random() * Math.PI });
+    this.flashes.push({ x, y, z, s: size, frames, age: 0, rot: Math.random() * Math.PI });
+  }
+
+  // A kill: a starburst at the hit point for a few frames, a ring of ink
+  // specks thrown out around it (mostly along the shot) and a few big chunks
+  // that tumble down. Ink, like everything else here.
+  killBurst(x, y, z, dx, dz, head = false, k = 1) {
+    this.enemyFlash(x, y, z, (head ? 1.0 : 0.75) * Math.max(0.8, k), 4);
+    const n = Math.round((head ? 22 : 16) * Math.max(0.8, k));
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2 + Math.random() * 0.3;
+      const sp = 2.5 + Math.random() * 3.5;
+      this.particle(x, y, z,
+        Math.cos(a) * sp + dx * 3, 1.5 + Math.random() * 3.5, Math.sin(a) * sp + dz * 3,
+        0.035 + Math.random() * 0.05, 0.45 + Math.random() * 0.4, INK, 0);
+    }
+    for (let i = 0; i < 4; i++) {
+      this.particle(x, y, z,
+        dx * (3 + Math.random() * 3) + (Math.random() - 0.5) * 2, 2 + Math.random() * 2, dz * (3 + Math.random() * 3) + (Math.random() - 0.5) * 2,
+        0.08 + Math.random() * 0.05, 0.9 + Math.random() * 0.5, SPATTER, 1);
+    }
   }
 
   update(dt, camera) {

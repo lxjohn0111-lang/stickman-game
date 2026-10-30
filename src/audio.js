@@ -490,6 +490,79 @@ const RECIPES = {
       o.connect(g).connect(out); o.start(0); o.stop(2.3);
     });
   }],
+  // ---- hit feedback (played on the UI bus: slow motion never smears them)
+  // every hit: a short bright tick
+  hitTick: [0.06, (ctx, out) => {
+    const o = ctx.createOscillator(); o.type = 'square'; env(ctx, o.frequency, [[0, 2900], [0.03, 1900, 'exp']]);
+    const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 900;
+    const g = ctx.createGain(); env(ctx, g.gain, [[0, 0], [0.001, 0.6, 'lin'], [0.035, 0.001, 'exp']]);
+    o.connect(hp).connect(g).connect(out); o.start(0); o.stop(0.05);
+  }],
+  // a headshot hit: the tick with a little metal ring on it
+  hitHead: [0.25, (ctx, out) => {
+    const o = ctx.createOscillator(); o.type = 'square'; env(ctx, o.frequency, [[0, 3200], [0.03, 2200, 'exp']]);
+    const g = ctx.createGain(); env(ctx, g.gain, [[0, 0], [0.001, 0.5, 'lin'], [0.035, 0.001, 'exp']]);
+    o.connect(g).connect(out); o.start(0); o.stop(0.05);
+    const r = ctx.createOscillator(); r.type = 'sine'; r.frequency.value = 2650;
+    const rg = ctx.createGain(); env(ctx, rg.gain, [[0, 0], [0.004, 0.45, 'lin'], [0.22, 0.001, 'exp']]);
+    r.connect(rg).connect(out); r.start(0); r.stop(0.24);
+  }],
+  // a kill: a deep thump under a bright, rising pop
+  kill: [0.45, (ctx, out) => {
+    const o = ctx.createOscillator(); o.type = 'sine'; env(ctx, o.frequency, [[0, 165], [0.2, 42, 'exp']]);
+    const g = ctx.createGain(); env(ctx, g.gain, [[0, 0], [0.003, 1, 'lin'], [0.32, 0.001, 'exp']]);
+    o.connect(g).connect(out); o.start(0); o.stop(0.38);
+    const n = noiseSrc(ctx, 0.12, 211);
+    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2600; bp.Q.value = 0.9;
+    const ng = ctx.createGain(); env(ctx, ng.gain, [[0, 0], [0.002, 0.6, 'lin'], [0.07, 0.001, 'exp']]);
+    n.connect(bp).connect(ng).connect(out); n.start(0);
+    const p = ctx.createOscillator(); p.type = 'triangle'; env(ctx, p.frequency, [[0, 1100], [0.09, 1850, 'exp']]);
+    const pg = ctx.createGain(); env(ctx, pg.gain, [[0, 0], [0.005, 0.32, 'lin'], [0.17, 0.001, 'exp']]);
+    p.connect(pg).connect(out); p.start(0); p.stop(0.2);
+  }],
+  // a headshot kill: the kill with a ding on top
+  killHead: [0.7, (ctx, out) => {
+    const o = ctx.createOscillator(); o.type = 'sine'; env(ctx, o.frequency, [[0, 170], [0.2, 40, 'exp']]);
+    const g = ctx.createGain(); env(ctx, g.gain, [[0, 0], [0.003, 1, 'lin'], [0.32, 0.001, 'exp']]);
+    o.connect(g).connect(out); o.start(0); o.stop(0.38);
+    [2093, 3136].forEach((f, i) => {
+      const d = ctx.createOscillator(); d.type = 'sine'; d.frequency.value = f;
+      const dg = ctx.createGain(); env(ctx, dg.gain, [[0, 0], [0.004, i ? 0.18 : 0.34, 'lin'], [0.6, 0.001, 'exp']]);
+      d.connect(dg).connect(out); d.start(0); d.stop(0.65);
+    });
+  }],
+  // time slowing down / coming back (the tutorial)
+  slowIn: [1.1, (ctx, out) => {
+    const o = ctx.createOscillator(); o.type = 'sine'; env(ctx, o.frequency, [[0, 320], [0.9, 60, 'exp']]);
+    const g = ctx.createGain(); env(ctx, g.gain, [[0, 0], [0.03, 0.8, 'lin'], [1.0, 0.001, 'exp']]);
+    o.connect(g).connect(out); o.start(0); o.stop(1.05);
+    const n = noiseSrc(ctx, 1.0, 221);
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; env(ctx, lp.frequency, [[0, 5000], [0.9, 250, 'exp']]);
+    const ng = ctx.createGain(); env(ctx, ng.gain, [[0, 0], [0.05, 0.5, 'lin'], [0.95, 0.001, 'exp']]);
+    n.connect(lp).connect(ng).connect(out); n.start(0);
+  }],
+  slowOut: [0.8, (ctx, out) => {
+    const o = ctx.createOscillator(); o.type = 'sine'; env(ctx, o.frequency, [[0, 70], [0.6, 300, 'exp']]);
+    const g = ctx.createGain(); env(ctx, g.gain, [[0, 0], [0.3, 0.6, 'lin'], [0.75, 0.001, 'exp']]);
+    o.connect(g).connect(out); o.start(0); o.stop(0.78);
+    const n = noiseSrc(ctx, 0.75, 223);
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; env(ctx, lp.frequency, [[0, 300], [0.65, 6000, 'exp']]);
+    const ng = ctx.createGain(); env(ctx, ng.gain, [[0, 0], [0.4, 0.45, 'lin'], [0.75, 0.001, 'exp']]);
+    n.connect(lp).connect(ng).connect(out); n.start(0);
+  }],
+  // a brute starting his charge
+  roar: [0.9, (ctx, out) => {
+    const n = noiseSrc(ctx, 0.85, 231);
+    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 2.2; env(ctx, bp.frequency, [[0, 420], [0.25, 650, 'lin'], [0.8, 300, 'exp']]);
+    const g = ctx.createGain(); env(ctx, g.gain, [[0, 0], [0.06, 1, 'lin'], [0.55, 0.7, 'lin'], [0.85, 0.001, 'exp']]);
+    n.connect(bp).connect(g).connect(out); n.start(0);
+    const o = ctx.createOscillator(); o.type = 'sawtooth'; env(ctx, o.frequency, [[0, 80], [0.3, 105, 'lin'], [0.8, 60, 'exp']]);
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 500;
+    const og = ctx.createGain(); env(ctx, og.gain, [[0, 0], [0.05, 0.6, 'lin'], [0.8, 0.001, 'exp']]);
+    o.connect(lp).connect(og).connect(out); o.start(0); o.stop(0.85);
+  }],
+  // a new weapon skin
+  unlock: [1.3, tones([523.25, 783.99, 1046.5, 1567.98], { amp: 0.26, len: 0.8, gap: 0.075, type: 'sine' })],
   uiClick: [0.08, (ctx, out) => {
     const o = ctx.createOscillator(); o.type = 'square'; o.frequency.value = 1400;
     const g = ctx.createGain(); env(ctx, g.gain, [[0, 0], [0.002, 0.3, 'lin'], [0.05, 0.001, 'exp']]);
@@ -532,6 +605,7 @@ export class Audio {
     this.musicWant = null;
     this.ambWant = [];
     this.reverbAmt = 0;
+    this.slowK = 1; // 1 = normal time; lower plays game sounds deeper and duller
   }
 
   // Pre-render every effect buffer. Works before any user gesture; music is
@@ -561,7 +635,11 @@ export class Audio {
       const comp = ctx.createDynamicsCompressor();
       comp.threshold.value = -10; comp.ratio.value = 4;
       this.master.connect(comp).connect(ctx.destination);
-      this.sfx = ctx.createGain(); this.sfx.connect(this.master);
+      // game sounds pass a lowpass that slow motion closes (see setSlow)
+      this.slowLP = ctx.createBiquadFilter();
+      this.slowLP.type = 'lowpass'; this.slowLP.frequency.value = 20000;
+      this.slowLP.connect(this.master);
+      this.sfx = ctx.createGain(); this.sfx.connect(this.slowLP);
       this.amb = ctx.createGain(); this.amb.connect(this.master);
       this.ui = ctx.createGain(); this.ui.connect(this.master);
       this.music = ctx.createGain(); this.music.connect(this.master);
@@ -614,6 +692,14 @@ export class Audio {
     if (this.verbGain) this.verbGain.gain.setTargetAtTime(amount, this.ctx.currentTime, 0.3);
   }
 
+  // Slow motion: game sounds (not the UI bus) play lower and duller.
+  setSlow(k) {
+    if (Math.abs(k - this.slowK) < 0.01) return;
+    this.slowK = k;
+    if (!this.ctx) return;
+    this.slowLP.frequency.setTargetAtTime(700 + 19300 * k * k, this.ctx.currentTime, 0.04);
+  }
+
   // opts: gain, pan (-1..1), rate, lowpass (Hz), bus ('sfx'|'ui'|'amb')
   play(name, opts = {}) {
     const ctx = this.ctx;
@@ -622,7 +708,8 @@ export class Audio {
     if (this.voices > 40 && !opts.priority) return null;
     const src = ctx.createBufferSource();
     src.buffer = buf;
-    src.playbackRate.value = opts.rate || 1;
+    const slow = !opts.bus || opts.bus === 'sfx' ? 0.6 + 0.4 * this.slowK : 1;
+    src.playbackRate.value = (opts.rate || 1) * slow;
     let node = src;
     if (opts.lowpass && opts.lowpass < 18000) {
       const f = ctx.createBiquadFilter();

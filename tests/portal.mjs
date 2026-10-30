@@ -68,23 +68,21 @@ async function runFramed(dir, portal, sdk) {
   else await page.route(SDK_HOST[portal], (r) => r.abort());
   await page.goto(srv.url);
   const frame = page.frames().find((f) => f.url().includes('nolock'));
+  // the game opens straight into play: a first-time player lands in Level 1
+  // inside the first-kill tutorial, with no menu and nothing to click first
   let reached = 'never started';
   try {
-    await frame.waitForFunction(() => window.WT && WT.game && WT.game.state === 'menu', null, { timeout: 180000 });
-    reached = 'menu';
+    await frame.waitForFunction(() => window.WT && WT.game && WT.game.state === 'playing', null, { timeout: 180000 });
+    reached = 'live';
   } catch (e) { /* reported below */ }
-  const v = reached === 'menu' ? await frame.evaluate(() => ({
+  const v = reached === 'live' ? await frame.evaluate(() => ({
     plat: WT.platform.name,
     boot: (() => { const m = document.getElementById('boot-msg'); return m && !m.classList.contains('hidden') ? m.textContent : ''; })(),
   })) : {};
-  // and it has to be playable, not just reach the menu
   let played = null;
-  if (reached === 'menu') {
-    await frame.evaluate(() => WT.game.startLevel(1));
-    await frame.waitForFunction(() => WT.game.state === 'ready', null, { timeout: 180000 }).catch(() => {});
-    await frame.$eval('#lc-start', (el) => el.click()).catch(() => {});
-    await frame.waitForFunction(() => WT.game.state === 'playing', null, { timeout: 60000 }).catch(() => {});
-    played = await frame.evaluate(() => ({ state: WT.game.state, enemies: WT.game.enemies.list.filter((e) => e.alive).length }));
+  if (reached === 'live') {
+    played = await frame.evaluate(() => ({ state: WT.game.state, level: WT.game.level.n, tutorial: WT.game.tutorial.phase, enemies: WT.game.enemies.list.filter((e) => e.alive).length }));
+    if (played.level !== 1 || played.tutorial !== 'shoot') played.state = 'not the first-run tutorial';
   }
   await page.close();
   srv.game.close(); srv.portal.close();
@@ -103,13 +101,13 @@ for (const portal of ['crazygames', 'poki']) {
     execFileSync('unzip', ['-o', '-q', zip, '-d', dir]);
 
     const on = await runFramed(dir, portal, true);
-    check(`${portal}${kind}: served over http in a cross-origin iframe, the game starts and plays`,
-      on.reached === 'menu' && on.boot === '' && on.plat === portal && on.played && on.played.state === 'playing' && on.played.enemies > 0 && on.errs.length === 0,
+    check(`${portal}${kind}: served over http in a cross-origin iframe, the game opens straight into play`,
+      on.reached === 'live' && on.boot === '' && on.plat === portal && on.played && on.played.state === 'playing' && on.played.enemies > 0 && on.errs.length === 0,
       { reached: on.reached, plat: on.plat, boot: on.boot, played: on.played, errs: on.errs.slice(0, 3) });
 
     const off = await runFramed(dir, portal, false);
     check(`${portal}${kind}: with the SDK script blocked, the game still starts and plays`,
-      off.reached === 'menu' && off.boot === '' && off.played && off.played.state === 'playing' && off.errs.length === 0,
+      off.reached === 'live' && off.boot === '' && off.played && off.played.state === 'playing' && off.errs.length === 0,
       { reached: off.reached, plat: off.plat, boot: off.boot, played: off.played, errs: off.errs.slice(0, 3) });
   }
 }

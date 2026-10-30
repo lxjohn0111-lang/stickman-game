@@ -222,7 +222,7 @@ function* build(K) {
   K.spawn(-11, G1 + 0.3, 30, E, 'rifle', { perch: true });
   K.spawn(-11, G1 + 0.3, 37, E, 'smg', { perch: true });
   K.spawn(-20, 0, 33, E, 'shotgun', { hold: true });
-  K.spawn(-26, 0, 29, E, 'pistol');
+  K.spawn(-26, 0, 29, E, 'runt');
   K.spawn(-18, 0, 20, E, 'smg', { patrol: [[-18, 20], [-2, 16], [-18, 20]] });
   K.spawn(20, 0, 19.5, W, 'rifle', { hold: true });
   K.spawn(-8, 0.12, 14, S, 'pistol', { weapon: 'revolver' });
@@ -231,8 +231,8 @@ function* build(K) {
   K.spawn(-11, G1 + 0.3, -8, E, 'rifle', { perch: true });
   K.spawn(-11, G1 + 0.3, 0, E, 'pistol', { perch: true });
   K.spawn(-20, 0, -3, E, 'shotgun', { hold: true });
-  K.spawn(-32, 0, 10, S, 'smg');
-  K.spawn(-31.5, 0, -22.5, S, 'heavy', { hold: true });
+  K.spawn(-32, 0, 10, S, 'runt');
+  K.spawn(-31.5, 0, -22.5, S, 'brute', { hold: true });
   K.spawn(0, 0, -33.5, S, 'heavy', { hold: true });
   K.spawn(-12, 0, -46, S, 'smg');
   K.spawn(12, 0, -47, S, 'rifle', { hold: true });
@@ -276,9 +276,6 @@ function* build(K) {
   K.weapon('shotgun', -15, 0.97, -11, 0.2);
   K.weapon('burst', 18, RF, -12, 0.4);
   K.weapon('revolver', -31, 0, 17.5, 0.4);
-  K.area('area.L7.street', -10, -30, 10, 70);
-  K.area('area.L7.alley', -34, -30, -10, 70);
-  K.area('area.L7.garage', -40, -90, 40, -30);
   K.data.arenas.push({ x: 0, y: 0, z: 18, yaw: N, entries: ['plaza', 'garageL1'] });
   K.data.arenas.push({ x: 0, y: G3, z: -54, yaw: S, entries: ['rampL2', 'rampL2b', 'garageL1'] });
   yield 1;
@@ -318,7 +315,7 @@ export default {
       key: 'L7.o3', type: 'survive', time: 90, zone: 'roof', marker: [0, G3 + 1.4, -54],
       onStart: [{ music: 'combat' }],
       waves: [
-        { at: 2, count: 3, roles: ['smg', 'pistol', 'shotgun'], entries: ['rampL2', 'rampL2b'] },
+        { at: 2, count: 3, roles: ['smg', 'runt', 'shotgun'], entries: ['rampL2', 'rampL2b'] },
         { at: 24, count: 4, roles: ['rifle', 'smg', 'shotgun', 'smg'], entries: ['rampL2', 'garageL1'] },
         { at: 46, count: 4, roles: ['heavy', 'smg', 'rifle', 'pistol'], entries: ['rampL2b', 'rampL2', 'plaza'] },
         { at: 66, count: 4, roles: ['shotgun', 'smg', 'rifle', 'heavy'], entries: ['rampL2', 'garageL1', 'rampL2b'] },

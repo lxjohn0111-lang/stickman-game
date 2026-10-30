@@ -15,6 +15,8 @@ let pw;
 try { pw = require('playwright'); } catch (e) { pw = createRequire('/opt/node22/lib/node_modules/')('playwright'); }
 
 const fails = [];
+// the game opens straight into play (a first-run player lands in the tutorial)
+const live = (state) => state === 'playing' || state === 'lockwait';
 const check = (name, ok, info) => { console.log(`${ok ? 'ok  ' : 'FAIL'} ${name} ${JSON.stringify(info ?? '')}`); if (!ok) fails.push(name); };
 
 const dir = `${root}/test-output/boot-build`;
@@ -52,7 +54,7 @@ const onefile = async (portal) => {
   page.on('request', (r) => { if (r.url() !== page.url() && !/^data:/.test(r.url())) asked.push(r.url()); });
   await page.route('**/*sdk*.js', (r) => r.abort()); // not reachable from here
   await page.goto(`file://${encodeURI(`${root}/${portal} upload/game-onefile/index.html`)}?nolock`);
-  await page.waitForFunction(() => window.WT && WT.game && WT.game.state === 'menu', null, { timeout: 120000 });
+  await page.waitForFunction(() => window.WT && WT.game && ['playing', 'lockwait'].includes(WT.game.state), null, { timeout: 120000 });
   const v = await page.evaluate(() => {
     const m = document.getElementById('boot-msg');
     return { msg: m.classList.contains('hidden') ? '' : m.textContent, state: WT.game.state };
@@ -65,14 +67,14 @@ const gone = await look('missing', 0);
 check('a game file that never arrives says so and names it', /game\.js/.test(gone.msg) && /could not be downloaded/i.test(gone.msg) && gone.state === null, gone);
 
 const slow = await look('slow', 12000);
-check('a slow game file shows no error and the game still starts', slow.msg === '' && slow.state === 'menu', slow);
+check('a slow game file shows no error and the game still starts', slow.msg === '' && live(slow.state), slow);
 
 const fast = await look('slow', 0);
-check('a normal load shows no error', fast.msg === '' && fast.state === 'menu' && fast.errs === 0, fast);
+check('a normal load shows no error', fast.msg === '' && live(fast.state) && fast.errs === 0, fast);
 
 for (const portal of ['crazygames', 'poki']) {
   const one = await onefile(portal);
-  check(`the ${portal} one-file build starts with no game.js beside it`, one.state === 'menu' && one.msg === '' && one.errs === 0 && one.extra.length === 0, one);
+  check(`the ${portal} one-file build starts with no game.js beside it`, live(one.state) && one.msg === '' && one.errs === 0 && one.extra.length === 0, one);
 }
 
 await browser.close();

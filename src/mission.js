@@ -46,8 +46,6 @@ export class Mission {
     for (const c of this.data.checkpoints) c.armed = false;
     this.queue = [];
     this.timers = [];
-    this.tipsShown = new Set();
-    this.areaKey = null;
     this.secretsFound = [false, false, false];
     this.run = { kills: 0, headshots: 0, killScore: 0, combo: 0, bonus: 0, noDamage: true };
     this.surviveLeft = 0;
@@ -181,7 +179,6 @@ export class Mission {
     }
     this._check();
     this._checkpoints();
-    this._areas();
     this._marker();
     if (this.def.update) this.def.update(g, this, dt);
   }
@@ -233,24 +230,6 @@ export class Mission {
     this.hasMarker = true;
   }
 
-  _areas() {
-    const P = this.game.player;
-    const g = this.game;
-    let key = null;
-    for (const a of this.data.areas) {
-      if (P.x >= a.x0 && P.x <= a.x1 && P.z >= a.z0 && P.z <= a.z1 && P.y >= a.y0 && P.y <= a.y1) { key = a.key; break; }
-    }
-    if (key && key !== this.areaKey) g.ui.area(t(key.startsWith('area.') ? key : 'area.' + key));
-    if (key) this.areaKey = key;
-    for (const tp of this.data.tips) {
-      if (this.tipsShown.has(tp.key)) continue;
-      if (P.x >= tp.x0 && P.x <= tp.x1 && P.z >= tp.z0 && P.z <= tp.z1) {
-        this.tipsShown.add(tp.key);
-        if (this.def.tutorial || tp.always) g.ui.tip(t(tp.key));
-      }
-    }
-  }
-
   // ------------------------------------------------------------------ interaction
   interactUsable(it) {
     if (this.used.has(it.id) && !it.repeat) return false;
@@ -297,7 +276,7 @@ export class Mission {
     P.stats.headshots = this.run.headshots;
     this.run.combo++;
     const mult = this.comboMult;
-    const pts = Math.round((SCORE.kill + (head ? SCORE.headshot : 0) + (e.R.boss ? 1500 : e.R.scale ? 150 : 0)) * mult);
+    const pts = Math.round((SCORE.kill + (head ? SCORE.headshot : 0) + (e.R.boss ? 1500 : e.R.bonus || 0)) * mult);
     this.run.killScore += pts;
     g.ui.killFeed(pts, mult, head);
     if (this.obj && this.obj.type === 'kill') g.ui.objective(this._label(), false);
@@ -359,6 +338,7 @@ export class Mission {
       this.checkpoint = this._snapshot(c.at ? { x: c.at[0], y: c.at[1], z: c.at[2], yaw: c.at[3] ?? c.yaw } : { x: c.x, y: c.y, z: c.z, yaw: c.yaw });
       g.ui.checkpoint();
       g.audio.play('checkpoint', { gain: 0.7 });
+      if (g.hints) g.hints.onCheckpoint();
       break;
     }
   }
@@ -381,7 +361,6 @@ export class Mission {
       timers: this.timers.map((tm) => ({ ...tm, at: tm.at - g.time })),
       surviveLeft: this.surviveLeft,
       cpIndex: this.cpIndex,
-      tipsShown: [...this.tipsShown],
       hooks: this.def.saveState ? this.def.saveState(g) : null,
     };
   }
@@ -411,7 +390,6 @@ export class Mission {
     this.surviveLeft = s.surviveLeft;
     this.cpIndex = s.cpIndex;
     for (const c of this.data.checkpoints) c.armed = false;
-    this.tipsShown = new Set(s.tipsShown);
     this.index = s.index;
     this.obj = this.objectives[this.index] || null;
     this.objT = 1;
@@ -430,7 +408,6 @@ export class Mission {
     this.restoreCheckpoint(snap);
     this.run = { kills: 0, headshots: 0, killScore: 0, combo: 0, bonus: 0, noDamage: true };
     g.player.stats = { shots: 0, hits: 0, kills: 0, headshots: 0, time: 0, damageTaken: 0 };
-    this.areaKey = null;
   }
 
   // ------------------------------------------------------------------ results
@@ -449,9 +426,11 @@ export class Mission {
     const score = Math.round(raw * g.diff.score);
     const th = starThresholds(this.totalEnemies);
     const stars = raw >= th.three ? 3 : raw >= th.two ? 2 : 1;
+    // how far the next star on this level was, in the points the card shows
+    const nextStarIn = stars < 3 ? Math.ceil(((stars === 1 ? th.two : th.three) - raw) * g.diff.score) : 0;
     return {
       time: st.time, kills: this.run.kills, headshots: this.run.headshots, accuracy: acc,
-      damage: Math.round(st.damageTaken), secrets, score, stars, noDamage: this.run.noDamage,
+      damage: Math.round(st.damageTaken), secrets, score, stars, nextStarIn, noDamage: this.run.noDamage,
       parts: { kills: this.run.killScore, bonus: this.run.bonus, accuracy, time: timeBonus, health, secrets: secretPts },
     };
   }

@@ -98,6 +98,7 @@ export const ROLE_DEFS = {
   gunDark: { c: 0x161616, n: 0x2b2640 },
   sleeve: { c: 0xffffff, n: 0x3f7cff },
   hand: { c: 0xffffff, n: 0xffd3ad },
+  casing: { c: 0x1a1a1a, n: 0xffc23a, ne: 0x2a1a00 },
   // Stickmen are coloured per instance (black enemies, grey civilians); the
   // role itself is white so the instance colour decides.
   enemy: { c: 0xffffff, n: 0xffffff, instanceTint: true },
@@ -106,6 +107,9 @@ export const ROLE_DEFS = {
   enemyGun: { c: 0x1d1d1d, n: 0x3a2d66 },
   vest: { c: 0x9a9a9a, n: 0xffb000 },
   cap: { c: 0xb0141e, n: 0xe0283b, ne: 0x300000 },
+  // brute helmet and shoulder plates, runt crest
+  bruteGear: { c: 0xb4b4b4, n: 0xff7a1a, ne: 0x2a0e00 },
+  runtCrest: { c: 0xffffff, n: 0x8dff2a, ne: 0x163300 },
   healthKit: { c: 0xffffff, n: 0xffffff },
   healthCross: { c: 0xb3121c, n: 0xff2d3d },
   ammoBox: { c: 0x3a3f2a, n: 0x5d6b2a },
@@ -239,5 +243,7 @@ export class Materials {
       this.lines[name].linewidth = s.width * (name === 'flash' ? 1 : ls);
     }
     this.cloud.visible = neo;
+    // the weapon skin re-tints the flash and tracers after every recolour
+    if (this.onApply) this.onApply(style);
   }
 }

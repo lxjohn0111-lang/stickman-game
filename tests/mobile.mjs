@@ -20,7 +20,7 @@ const fits = (sel) => page.$$eval(sel, (els) => els.filter((e) => e.offsetParent
 let innerW = PHONE.width, innerH = PHONE.height;
 
 // ---- detection and defaults
-const det = await page.evaluate(() => ({ touch: document.body.classList.contains('touch'), active: WT.game.touch.active, fallback: WT.game.input.fallback, quality: WT.game.settings.quality, variant: WT.t('tip.reload') }));
+const det = await page.evaluate(() => ({ touch: document.body.classList.contains('touch'), active: WT.game.touch.active, fallback: WT.game.input.fallback, quality: WT.game.settings.quality, variant: WT.t('hint.reload') }));
 check('touch screen detected, no pointer lock, Low quality by default', det.touch && det.active && det.fallback && det.quality === 'low', det);
 check('touch wording in hints', det.variant.startsWith('Tap'), det.variant);
 check('Neobrutalist is the default style', (await page.evaluate(() => WT.game.style)) === 'neo', '');
@@ -81,8 +81,9 @@ const st = await page.evaluate(() => WT.game.state);
 check('Start goes straight to playing (no pointer lock needed)', st === 'playing', st);
 await step(2);
 await shot('hud');
-const hud = await page.evaluate(() => ({ touch: getComputedStyle(document.getElementById('touch')).display, overlay: document.getElementById('overlay').textContent }));
-check('touch controls shown in play, touch tutorial overlay', hud.touch === 'block' && /Drag on the left half/.test(hud.overlay), hud);
+const hud = await page.evaluate(() => ({ touch: getComputedStyle(document.getElementById('touch')).display, overlay: !!document.getElementById('overlay') }));
+// the old wall of controls text is gone: the tutorial and one-line hints teach instead
+check('touch controls shown in play, no wall of controls text', hud.touch === 'block' && !hud.overlay, hud);
 const hb = await fits('#touch .tbtn, #status, #objective, #scorebox');
 check('HUD and buttons inside the screen', hb.ok, hb.rs);
 // the thumbs' areas are clear of the health/ammo panel

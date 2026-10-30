@@ -26,6 +26,9 @@ import { platform, cache } from './platform.js';
 import { TouchControls, detectTouch } from './touch.js';
 import { setVariant } from './i18n.js';
 import { handwrite } from './handwriting.js';
+import { Tutorial } from './tutorial.js';
+import { Hints } from './hints.js';
+import { applySkin, updateSkin, wearSkin } from './skins.js';
 
 // Quality never touches gameplay: resolution, shadow map, particles, decals,
 // outline width.
@@ -60,6 +63,15 @@ class Game {
     this.forcedCombat = false;
     this.combatHold = 0;
     this.perf = { t: 0, frames: 0, slow: 0, hinted: false, hintT: 0 };
+    // time scale: 1 normally; below 1 while the tutorial holds the moment, for
+    // the few frames of a kill's hitstop, and in a headshot's slow beat
+    this.timeScale = 1;
+    this.hitstop = 0;
+    this.slowBeat = 0;
+    this.fovPunch = 0;
+    // ?menu opens on the main menu, as the game used to; otherwise straight
+    // into play (see _enterFromBoot)
+    this.bootToMenu = new URLSearchParams(location.search).has('menu');
 
     const canvas = document.getElementById('game');
     this.canvas = canvas;
@@ -115,6 +127,8 @@ class Game {
     this.ui = new UI(this);
     this.touch = new TouchControls(this);
     if (touch) this.touch.enable(true);
+    this.tutorial = new Tutorial(this);
+    this.hints = new Hints(this);
     this.orbitA = 0.6;
 
     this._wire();
@@ -127,14 +141,44 @@ class Game {
     requestAnimationFrame((tt) => this.frame(tt));
     // the menu backdrop is the level the player will continue on
     platform.onSettings = () => this.applySettings(false);
-    this.loadLevel(Math.min(progress.last || 1, LEVELS.length), { backdrop: true }).then(() => {
+    this.loadLevel(Math.min(progress.last || 1, progress.unlocked || 1, LEVELS.length), { backdrop: true }).then(() => {
       platform.loading(false, true);
       window.__wtStarted = true;
       document.getElementById('boot').classList.add('hidden');
-      this.state = 'menu';
-      this.ui.show('menu');
-      this.audio.setMusic('musicMenu');
+      if (this.bootToMenu) {
+        this.state = 'menu';
+        this.ui.show('menu');
+        this.audio.setMusic('musicMenu');
+      } else this._enterFromBoot();
     });
+  }
+
+  // The game opens straight into play: no menu, no Play button. A first-time
+  // player lands on North Gate's roof inside the first-kill tutorial; anyone
+  // else goes back to the level they were on. The menu is still there, from
+  // Pause. No ad is offered here: nobody has played anything yet.
+  _enterFromBoot() {
+    const L = this.level;
+    progress.last = L.n;
+    this.endlessMode = false;
+    this._freshStart(false);
+    this._prepareLevelAudio();
+    this.ui.resetRun();
+    // first run only: not for a returning player who has already won a level
+    const veteran = Object.values(progress.levels).some((r) => r && r.completed);
+    this.pendingTutorial = L.n === 1 && !progress.tutorialSeen && !veteran;
+    if (this.touch.active || this.input.fallback) {
+      // nothing to capture: play, unless a phone is held upright
+      if (this._portrait()) { this.state = 'lockwait'; this.ui.show('hud'); this._orientation(); } else this._enterPlaying();
+    } else if (this.pendingTutorial) {
+      // the first click is the tutorial's shot, and it captures the mouse on
+      // the way (see the gesture listener in _wire)
+      this._enterPlaying();
+    } else {
+      // one small "Click to play": the browser needs a click to capture the mouse
+      this.state = 'lockwait';
+      this.ui.show('clicklock', { play: true });
+    }
   }
 
   _shadowBox(h) {
@@ -181,7 +225,10 @@ class Game {
       if (b.weapon === 'shotgun') dmg *= Math.max(0.35, Math.min(1, 1.15 - b.d / 22));
       const r = this.enemies.damage(e, dmg, part, point, dir);
       P().registerHit(b);
-      if (!r.killed) this.ui.hitMarker(part === 'head');
+      if (!r.killed) {
+        this.ui.hitMarker(part === 'head');
+        this.audio.play(part === 'head' ? 'hitHead' : 'hitTick', { bus: 'ui', gain: part === 'vest' ? 0.35 : 0.55 });
+      }
     };
     this.bullets.onWorldHit = (hit, b) => {
       if (hit.tag && hit.tag.startsWith('destructible:')) {
@@ -234,6 +281,18 @@ class Game {
         this.ui.show('clicklock');
       }
     };
+    // The page's first click or key press is also its first gesture: start the
+    // sound, and when play began without the mouse captured (straight from
+    // boot), capture it now. The click itself still fires: in the tutorial it
+    // is the first shot.
+    const gesture = (e) => {
+      this.audio.unlock();
+      if (this.state !== 'playing' || this.input.locked || this.input.fallback || this.touch.active) return;
+      if (e.type === 'keydown' && e.code === 'Escape') return;
+      this.input.requestLock();
+    };
+    window.addEventListener('pointerdown', gesture, true);
+    window.addEventListener('keydown', gesture, true);
     // a touch laptop or a tablet reported as a mouse device: switch to touch
     // controls the first time the screen is actually touched
     window.addEventListener('pointerdown', (e) => {
@@ -325,6 +384,7 @@ class Game {
   setStyle(style, save = true) {
     this.style = style;
     this.materials.apply(style);
+    applySkin(this); // each weapon skin has a look per style
     this._applyEnv(this.scene, this.level ? this.level.def : null, style);
     this.vm.sun.intensity = style === 'neo' ? Math.PI * 0.5 : 0;
     this.vm.ambient.intensity = style === 'neo' ? Math.PI * 0.72 : 0;
@@ -437,6 +497,7 @@ class Game {
   // Reset a built level to its start (instant restart / replay).
   _freshStart(endless = false) {
     const L = this.level;
+    this.tutorial.stop();
     for (const d of this.doors) d.reset();
     this.hazards.load(L);
     this.env.load(L);
@@ -508,9 +569,7 @@ class Game {
     this.ui.resetRun();
     this._mobileFullscreen();
     this.input.requestLock();
-    const def = this.level.def;
-    if (def.tutorial && !this.endlessMode) this.ui.showOverlay();
-    if (!this.endlessMode) this.ui.objective(this.mission.label, false);
+    if (!this.endlessMode) this.ui.objective(this.mission.label, true);
     this.time = Math.max(this.time, 0);
     if ((this.input.fallback || this.input.locked) && !this._portrait()) this._enterPlaying();
     else {
@@ -565,6 +624,11 @@ class Game {
     this.input.takeLook();
     this.ui.show('hud');
     this.last = performance.now();
+    if (this.pendingTutorial) {
+      this.pendingTutorial = false;
+      // no guard in view (should not happen on North Gate): just play
+      if (!this.tutorial.start()) this.ui.objective(this.mission.label || '', true);
+    }
   }
 
   pause() {
@@ -593,6 +657,7 @@ class Game {
   restartCheckpoint() {
     if (this.endlessMode) { this.startEndless(); return; }
     this.audio.unlock();
+    this.tutorial.stop();
     this.mission.restoreCheckpoint();
     this.fx.reset();
     this._afterRestart();
@@ -617,6 +682,8 @@ class Game {
 
   toMainMenu() {
     this.state = 'menu';
+    this.tutorial.stop();
+    this.pendingTutorial = false;
     document.body.classList.remove('need-landscape');
     this.touch.reset();
     this.endlessMode = false;
@@ -626,7 +693,6 @@ class Game {
     this.input.capture = false;
     this.input.exitLock();
     this.ui.setFade(0);
-    this.ui.hideOverlay();
     this.audio.setMusic('musicMenu');
     this.audio.setAmbience([]);
     this.audio.setReverb(0);
@@ -656,6 +722,18 @@ class Game {
   onNoise(x, y, z, r) { this.enemies.hearNoise(x, y, z, r); }
 
   onEnemyKilled(e, head, cause) {
+    if (!e.civilian && (cause === 'player' || cause === 'blast')) {
+      // juice: the world stops for a few frames, the view punches in, and a
+      // headshot (or felling a big one) gets a short slow-motion beat
+      const big = (e.R.scale || 1) > 1.1;
+      this.hitstop = Math.max(this.hitstop, head ? 0.085 : big ? 0.1 : 0.055);
+      if (head || big) this.slowBeat = 0.34;
+      this.fovPunch = Math.max(this.fovPunch, head ? 0.075 : 0.05);
+      this.player.shake = Math.max(this.player.shake, head || big ? 0.4 : 0.24);
+      this.audio.play(head ? 'killHead' : 'kill', { bus: 'ui', gain: 0.8, priority: true });
+    }
+    this.tutorial.onKill(e);
+    this.hints.onKill(e, head);
     this.mission.onEnemyKilled(e, head, cause);
   }
 
@@ -665,7 +743,6 @@ class Game {
     this.deathClock = 0;
     this.cardShown = false;
     this.ui.onDeath();
-    this.ui.hideOverlay();
   }
 
   onLevelComplete(r) {
@@ -676,7 +753,6 @@ class Game {
     this.audio.play('levelComplete', { gain: 0.8, priority: true });
     platform.happytime();
     this.audio.setMusic('musicMenu');
-    this.ui.hideOverlay();
     this.ui.showResults(r, this.level.def);
   }
 
@@ -766,14 +842,36 @@ class Game {
     const realDt = Math.min(0.25, Math.max(0, (now - this.last) / 1000));
     this.last = now;
     const dt = Math.min(realDt, 1 / 30);
-    this.step(dt, realDt);
-    platform.gameplay(this.state === 'playing' && !document.hidden);
+    const playing = this.state === 'playing';
+    if (playing) this.tutorial.update(realDt);
+    this.step(dt, realDt, playing ? this._timeScale(realDt) : 1);
+    if (playing) this.hints.update(realDt);
+    updateSkin(this, realDt);
+    platform.gameplay(playing && !document.hidden);
   }
 
-  step(dt, realDt = dt) {
+  // Hitstop, a slow-motion beat and the tutorial all slow game time; mouse look
+  // never slows, so aiming stays sharp. Only real frames get this: the tests
+  // that step the game by hand keep exact, unscaled time.
+  _timeScale(realDt) {
+    let s = 1;
+    if (this.slowBeat > 0) {
+      this.slowBeat = Math.max(0, this.slowBeat - realDt);
+      s = 0.35 + 0.65 * (1 - Math.min(1, this.slowBeat / 0.25));
+    }
+    s = Math.min(s, this.tutorial.scale);
+    this.audio.setSlow(s);
+    if (this.hitstop > 0) { this.hitstop = Math.max(0, this.hitstop - realDt); s = Math.min(s, 0.03); }
+    this.timeScale = s;
+    return s;
+  }
+
+  step(dt, realDt = dt, scale = 1) {
     const st = this.state;
     const L = this.level;
+    this.fovPunch *= Math.exp(-realDt * 11);
     if (st === 'playing' && L) {
+      dt *= scale;
       this.time += dt;
       this.touch.update(dt);
       this.player.update(dt, this.input, settings);
@@ -889,7 +987,7 @@ class Game {
   _render(withViewModel) {
     const r = this.renderer;
     r.info.reset();
-    this.camera.fov = settings.fov * (1 - 0.1 * (this.player.aiming ? 1 : 0));
+    this.camera.fov = settings.fov * (1 - 0.1 * (this.player.aiming ? 1 : 0)) * (1 - this.fovPunch);
     this.camera.updateProjectionMatrix();
     this.bullets.render();
     this.items.beginGuns();
@@ -937,7 +1035,7 @@ async function boot() {
   cache.dropLegacy('waythrough.preview.');
   try {
     const game = new Game();
-    window.WT = { game, snapshot: () => game.snapshot(), THREE, HOLD, progress, resetProgress: resetProgressForTests, t, platform, handwrite, DIFFICULTY, SETTINGS_DEFAULTS };
+    window.WT = { game, snapshot: () => game.snapshot(), THREE, HOLD, progress, resetProgress: resetProgressForTests, t, platform, handwrite, DIFFICULTY, SETTINGS_DEFAULTS, saveProgress, wearSkin: (id) => wearSkin(game, id) };
   } catch (err) {
     console.error(err);
     platform.error(err);

@@ -194,12 +194,12 @@ function* build(K) {
   K.spawn(-6, CC, 8, S, 'smg', { patrol: [[-6, 8], [6, 8], [6, 16], [-6, 8]] });
   K.spawn(5, CC, -1, S, 'shotgun', { hold: true });
   K.spawn(12, CC, -3, S, 'rifle', { hold: true });
-  K.spawn(-12, CC, -1, E, 'smg');
+  K.spawn(-12, CC, -1, E, 'runt');
   K.spawn(-10, PF, -30, S, 'smg', { patrol: [[-10, -30], [-10, -52], [-10, -30]] });
   K.spawn(-12.5, PF, -20, E, 'pistol');
   K.spawn(-3.6, PF, -14, S, 'shotgun', { hold: true });
   K.spawn(10, PF, -56, S, 'rifle', { hold: true });
-  K.spawn(11, PF, -24, W, 'smg', { patrol: [[11, -24], [11, -48], [11, -24]] });
+  K.spawn(11, PF, -24, W, 'runt', { patrol: [[11, -24], [11, -48], [11, -24]] });
   K.spawn(11.5, PF, -40.5, W, 'heavy', { hold: true });
   K.spawn(-19, PF, -33, E, 'pistol', { hold: true });
   K.spawn(0, 0, -74, S, 'rifle', { hold: true });
@@ -239,9 +239,6 @@ function* build(K) {
   K.weapon('shotgun', -1.68, PF + 0.47, -18, 0.3);
   K.weapon('rifle', -13.8, CC, 16.2, 0.2);
   K.weapon('mpistol', 20, PF, -46.5, 1.1);
-  K.area('area.L3.hall', -30, -6, 30, 60, CC - 0.3, 30);
-  K.area('area.L3.platform', -30, -62, 30, 20, -1, CC - 0.5);
-  K.area('area.L3.tunnel', -30, -120, 30, -62);
   K.data.arenas.push({ x: 0, y: CC, z: 10, yaw: N, entries: ['hallS', 'platW', 'platE'] });
   K.data.arenas.push({ x: -10, y: PF, z: -30, yaw: S, entries: ['tunnelN', 'platE', 'trackS'] });
   yield 1;

@@ -4,7 +4,7 @@
 //    cylinders and cones and merged per material role;
 //  * data a level registers: player start, enemy spawns and groups,
 //    reinforcement entries, checkpoints, secrets, pickups, interactables,
-//    destructibles, zones, hazards, areas for captions, minimap shapes;
+//    destructibles, zones, hazards, minimap shapes;
 //  * a staged finalize() that merges geometry and links the nav graph over
 //    several frames so loading never blocks for long.
 import * as THREE from 'three';
@@ -84,7 +84,7 @@ export class LevelKit {
     this.data = {
       start: { x: 0, y: 0, z: 0, yaw: 0 },
       spawns: [], entries: [], checkpoints: [], secrets: [], items: [], interacts: [], destructibles: [],
-      zones: [], areas: [], conveyors: [], vents: [], presses: [], lifts: [], lamps: [], route: [], tips: [],
+      zones: [], conveyors: [], vents: [], presses: [], lifts: [], lamps: [], route: [],
       shadowToggles: [], puddles: [], arenas: [],
     };
     this._spawnKey = 0;
@@ -865,10 +865,6 @@ export class LevelKit {
   }
 
   zone(id, x0, y0, z0, x1, y1, z1) { this.data.zones.push({ id, x0, y0, z0, x1, y1, z1 }); }
-
-  area(key, x0, z0, x1, z1, y0 = -1e3, y1 = 1e3) { this.data.areas.push({ key, x0, z0, x1, z1, y0, y1 }); }
-
-  tip(key, x0, z0, x1, z1) { this.data.tips.push({ key, x0, z0, x1, z1 }); }
 
   route(points) { this.data.route = points; }
 

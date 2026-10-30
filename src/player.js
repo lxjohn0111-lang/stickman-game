@@ -375,7 +375,9 @@ export class Player {
         } else this.burstLeft = 0;
       }
     }
-    const trigger = (def.auto ? input.left : input.leftPressed) && !this.climb;
+    // automatic weapons fire while held; a click too quick for any frame to see
+    // it held still fires once
+    const trigger = (def.auto ? input.left || input.leftPressed : input.leftPressed) && !this.climb;
     if (input.leftPressed) this.lastActed = g.time;
     if (!input.left) this.dryClicked = false;
     if (trigger && this.reloading && def.shellReload && w.mag > 0) {
@@ -449,6 +451,8 @@ export class Player {
     this.recoilPitch += kp * 0.65;
     this.yaw += (Math.random() - 0.5) * def.kickYaw * 2;
     this.shake = Math.max(this.shake, def.id === 'shotgun' ? 0.6 : def.id === 'revolver' ? 0.4 : 0.15);
+    // the big guns punch the view in a touch, too
+    g.fovPunch = Math.max(g.fovPunch || 0, def.id === 'shotgun' ? 0.03 : def.id === 'revolver' ? 0.022 : 0.006);
     if (def.id === 'shotgun') {
       g.vm.pump();
       this.pumpSoundT = 0.11;
@@ -598,6 +602,8 @@ export class Player {
     if (!this.alive || amount <= 0) return;
     const g = this.game;
     if (g.godMode) return;
+    // the first-kill tutorial: nothing can hurt you until time is back to normal
+    if (g.tutorial && g.tutorial.safe) return;
     this.health -= amount;
     this.lastDamage = g.time;
     this.stats.damageTaken += amount;

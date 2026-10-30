@@ -128,7 +128,7 @@ function* build(K) {
   K.spawn(-14, 0, 24, E, 'smg', { patrol: [[-14, 24], [14, 24], [-14, 24]] });
   K.spawn(16, 0, 34, S, 'pistol');
   K.spawn(-6, 0, 2, S, 'shotgun', { hold: true });
-  K.spawn(10, 0, 3, S, 'smg');
+  K.spawn(10, 0, 3, S, 'runt');
   K.spawn(-20, 0, -14, E, 'smg', { patrol: [[-20, -14], [14, -14], [-20, -14]] });
   K.spawn(4, 0, -26, S, 'pistol');
   K.spawn(-10, 0, -38, E, 'rifle', { hold: true });
@@ -137,7 +137,7 @@ function* build(K) {
   K.spawn(-1, CW, -46.3, S, 'smg', { hold: true });
   K.spawn(-26, 0, -34, E, 'shotgun', { hold: true });
   K.spawn(-27, 0, -20, E, 'pistol', { hold: true, weapon: 'revolver' });
-  K.spawn(28, 0, -44, W, 'heavy', { hold: true });
+  K.spawn(28, 0, -44, W, 'brute', { hold: true });
   K.spawn(32, 0, -39, W, 'smg', { hold: true });
   K.spawn(28, 0, -20, W, 'rifle', { hold: true });
   K.spawn(30, 0, 2, W, 'smg', { patrol: [[30, 2], [30, -18], [30, 2]] });
@@ -170,9 +170,6 @@ function* build(K) {
   K.weapon('shotgun', -27.5, 0, -12.5, 0.2);
   K.weapon('burst', 1.2, CW + 0.93, -49.6, 0);
   K.weapon('mpistol', 25, 0, -51.2, 0.8);
-  K.area('area.L6.floor', -36, -52, 22, 10);
-  K.area('area.L6.store', 22, -52, 36, -36);
-  K.area('area.L6.furnace', -36, -52, -26, 10);
   K.data.arenas.push({ x: 0, y: 0, z: -14, yaw: N, entries: ['westDoor', 'eastDoor', 'south', 'dock'] });
   yield 1;
 }
@@ -211,7 +208,7 @@ export default {
       onStart: [{ lift: { id: 'freight', y: 0 } }, { sound: 'elevator' }, { music: 'combat' }],
       waves: [
         { at: 1, count: 3, roles: ['smg', 'shotgun', 'pistol'], entries: ['westDoor', 'south'] },
-        { at: 15, count: 3, roles: ['rifle', 'smg', 'shotgun'], entries: ['eastDoor', 'dock'] },
+        { at: 15, count: 3, roles: ['rifle', 'runt', 'shotgun'], entries: ['eastDoor', 'dock'] },
         { at: 29, count: 4, roles: ['heavy', 'smg', 'rifle', 'shotgun'], entries: ['westDoor', 'eastDoor', 'south'] },
       ],
       onComplete: [{ open: 'liftGate' }, { open: 'liftGate2' }, { music: 'calm' }, { sound: 'objective' }],

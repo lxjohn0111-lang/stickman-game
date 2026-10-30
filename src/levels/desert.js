@@ -196,9 +196,9 @@ function* build(K) {
   K.spawn(24, TW, -16.4, W, 'rifle', { perch: true });
   K.spawn(-3, 0, -30, S, 'shotgun', { hold: true });
   K.spawn(3, 0, -34, S, 'smg', { hold: true });
-  K.spawn(14, 0, -42, W, 'heavy', { hold: true });
+  K.spawn(14, 0, -42, W, 'brute', { hold: true });
   K.spawn(-14, 0, -32, E, 'pistol', { patrol: [[-14, -32], [-14, -48], [10, -48], [-14, -32]] });
-  K.spawn(-42, 0, -10, E, 'smg', { patrol: [[-42, -10], [-42, 10], [-42, -10]] });
+  K.spawn(-42, 0, -10, E, 'runt', { patrol: [[-42, -10], [-42, 10], [-42, -10]] });
   K.spawn(-54, 0, -6, E, 'shotgun', { hold: true });
   K.spawn(-47, 0, -18.6, S, 'rifle', { hold: true });
   K.spawn(-55, 0, -28, E, 'pistol', { hold: true });
@@ -211,7 +211,7 @@ function* build(K) {
   K.spawn(16, TW, -82.4, S, 'sniper');
   K.spawn(-2.2, 0, -61.2, S, 'rifle', { hold: true });
   K.spawn(2.4, 0, -67.2, S, 'rifle', { hold: true });
-  K.spawn(-12, 0, -66, S, 'smg');
+  K.spawn(-12, 0, -66, S, 'runt');
   K.spawn(12, 0, -70, S, 'shotgun');
   K.spawn(-7, 0, -86, S, 'pistol', { hold: true });
   K.spawn(7, 0, -80, S, 'heavy', { hold: true });
@@ -243,10 +243,6 @@ function* build(K) {
   K.weapon('burst', -3, 0.77, -33, 0.4);
   K.weapon('shotgun', -58, 0, -26, 1.2);
   K.weapon('revolver', 46, 0, -12, 0.3);
-  K.area('area.L4.dunes', -80, -12, 80, 60);
-  K.area('area.L4.camp', -80, -60, 30, -12);
-  K.area('area.L4.trench', 30, -60, 80, -12);
-  K.area('area.L4.check', -80, -120, 80, -60);
   K.data.arenas.push({ x: 0, y: 0, z: -24, yaw: S, entries: ['westFar', 'eastFar', 'southWadi'] });
   K.data.arenas.push({ x: 0, y: 0, z: -70, yaw: N, entries: ['north', 'westFar', 'eastFar'] });
   yield 1;

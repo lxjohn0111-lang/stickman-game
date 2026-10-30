@@ -20,6 +20,13 @@ export const HOLD = {
 };
 
 const _v = new THREE.Vector3();
+// where spent casings leave each gun (gun-local, right side of the receiver);
+// the revolver keeps its brass
+const PORT = {
+  smg: new THREE.Vector3(0.03, 0.06, -0.06), rifle: new THREE.Vector3(0.03, 0.05, -0.07),
+  burst: new THREE.Vector3(0.03, 0.05, -0.06), pistol: new THREE.Vector3(0.02, 0.07, -0.05),
+  mpistol: new THREE.Vector3(0.02, 0.065, -0.05), shotgun: new THREE.Vector3(0.03, 0.05, -0.05),
+};
 
 export class ViewModel {
   constructor(materials) {
@@ -49,6 +56,38 @@ export class ViewModel {
     this.dropT = -1;
     this.flashFrames = 0;
     this._buildFlash();
+    this._buildShells();
+  }
+
+  // Spent casings: a small pool of brass that flicks out to the right and
+  // tumbles away under gravity.
+  _buildShells() {
+    const geo = new THREE.BoxGeometry(0.0095, 0.0095, 0.026);
+    this.shells = [];
+    for (let i = 0; i < 12; i++) {
+      const m = new THREE.Mesh(geo, this.materials.get('casing'));
+      m.visible = false;
+      this.scene.add(m);
+      this.shells.push({ m, v: new THREE.Vector3(), spin: new THREE.Vector3(), life: 0 });
+    }
+    this.shellNext = 0;
+  }
+
+  _eject(size = 1) {
+    const cur = this.current;
+    const port = PORT[cur.id];
+    if (!port) return;
+    const s = this.shells[this.shellNext];
+    this.shellNext = (this.shellNext + 1) % this.shells.length;
+    cur.group.updateMatrixWorld(true);
+    s.m.position.copy(port).applyMatrix4(cur.group.matrixWorld);
+    s.m.scale.setScalar(size);
+    s.m.rotation.set(Math.random() * 3, Math.random() * 3, Math.random() * 3);
+    // camera space: +x right, +y up, +z back toward the viewer
+    s.v.set(0.8 + Math.random() * 0.6, 0.85 + Math.random() * 0.5, 0.15 + Math.random() * 0.25);
+    s.spin.set((Math.random() - 0.5) * 40, (Math.random() - 0.5) * 40, (Math.random() - 0.5) * 40);
+    s.life = 0.6;
+    s.m.visible = true;
   }
 
   _buildGun(id) {
@@ -161,13 +200,15 @@ export class ViewModel {
     const set = this.strokeSets[Math.floor(Math.random() * this.strokeSets.length)];
     for (const s of this.strokeSets) s.visible = s === set;
     this.flash.rotation.z = Math.random() * Math.PI;
-    const sc = 0.055 + Math.random() * 0.02;
+    const big = this.current.id === 'shotgun' ? 1.45 : this.current.id === 'revolver' ? 1.3 : 1;
+    const sc = (0.07 + Math.random() * 0.03) * big;
     this.flash.scale.setScalar(sc);
+    if (this.current.id !== 'shotgun') this._eject();
     if (this.current.id === 'pistol' || this.current.id === 'mpistol') this.slideT = 0;
     if (this.current.movers.drum) this.drumTarget = (this.drumTarget || 0) + Math.PI / 3;
   }
 
-  pump() { this.pumpT = 0; }
+  pump() { this.pumpT = 0; this._eject(1.7); }
   startReload(dur) { this.reloadT = 0; this.reloadDur = dur; }
   stopReload() { this.reloadT = -1; }
   drop() { this.dropT = 0; }
@@ -176,6 +217,14 @@ export class ViewModel {
   update(dt, s) {
     const cur = this.current;
     if (!cur) return;
+    for (const sh of this.shells) {
+      if (sh.life <= 0) continue;
+      sh.life -= dt;
+      sh.v.y -= 7 * dt;
+      sh.m.position.addScaledVector(sh.v, dt);
+      sh.m.rotation.x += sh.spin.x * dt; sh.m.rotation.y += sh.spin.y * dt; sh.m.rotation.z += sh.spin.z * dt;
+      if (sh.life <= 0) sh.m.visible = false;
+    }
     // recoil spring, sub-stepped for stability
     const w = 40, z = 0.72;
     const n = 3, h = dt / n;

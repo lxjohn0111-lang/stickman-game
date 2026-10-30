@@ -7,7 +7,8 @@ import * as THREE from 'three';
 import { handwrite } from './handwriting.js';
 import { PLAYER, WEAPONS } from './config.js';
 import { t } from './i18n.js';
-import { progress, levelRecord } from './save.js';
+import { progress, levelRecord, totalStars } from './save.js';
+import { SKINS, skinUnlocked, nextSkin, newlyUnlocked, swatchUrl, wearSkin } from './skins.js';
 import { campaignStats } from './mission.js';
 import { platform } from './platform.js';
 
@@ -71,11 +72,8 @@ export class UI {
     this.prompt = $('#prompt');
     this.vignette = $('#vignette');
     this.healflash = $('#healflash');
-    this.hitdir = $('#hitdir');
-    this.hitdirText = $('#hitdir span');
     this.edges = { AHEAD: $('#edge-top'), BEHIND: $('#edge-bottom'), LEFT: $('#edge-left'), RIGHT: $('#edge-right') };
     this.edgeT = { AHEAD: 0, BEHIND: 0, LEFT: 0, RIGHT: 0 };
-    this.hitdirT = 0;
     this.hitmarker = $('#hitmarker');
     this.hitmarkerT = 0;
     this.healthEl = $('#health');
@@ -92,8 +90,6 @@ export class UI {
     this.toastT = 0;
     this.styleToastEl = $('#styletoast');
     this.styleToastT = 0;
-    this.areaEl = $('#area');
-    this.areaT = 0;
     this.tipEl = $('#tip');
     this.tipT = 0;
     this.objEl = $('#objective');
@@ -105,7 +101,6 @@ export class UI {
     this.feedT = 0;
     this.bossEl = $('#bossbar');
     this.cpEl = $('#cpnote');
-    this.overlayEl = $('#overlay');
     this.perfEl = $('#perf');
     this.fade = $('#fade');
     this.promptKey = '';
@@ -113,7 +108,7 @@ export class UI {
     this.pauseSection = 'mission';
     this.healT = 0;
     this.lowBeatT = 0;
-    this.overlayOn = false;
+    this.objShowT = 0;
 
     this.applyTexts();
     for (const n of document.querySelectorAll('.logo-hw')) n.appendChild(handwrite(t('game.title'), { height: 58, stroke: 6, animate: true, delay: 0.1 }));
@@ -183,7 +178,7 @@ export class UI {
   }
 
   // ------------------------------------------------------------------ screens
-  show(which) {
+  show(which, opts = {}) {
     for (const id of ['#menu', '#pause', '#death', '#results', '#clicklock', '#loadcard']) $(id).classList.add('hidden');
     this.hud.classList.toggle('hidden', !(which === 'hud' || which === 'clicklock' || which === 'dead'));
     if (which === 'menu') {
@@ -204,6 +199,8 @@ export class UI {
     } else if (which === 'results') {
       $('#results').classList.remove('hidden');
     } else if (which === 'clicklock') {
+      const touch = this.game.touch && this.game.touch.active;
+      $('#clicklock-t').textContent = t(opts.play ? (touch ? 'clicklock.play.touch' : 'clicklock.play') : 'clicklock.title');
       $('#clicklock').classList.remove('hidden');
     } else if (which === 'loading') {
       $('#loadcard').classList.remove('hidden');
@@ -215,13 +212,11 @@ export class UI {
     for (const o of document.querySelectorAll(`${rootSel} nav button`)) o.classList.toggle('active', o.dataset.sec === sec);
   }
 
-  // ---- loading card: level name, objective, control reminder, progress
+  // ---- loading card: which level and a bar. Nothing to read: the level
+  // itself shows where to go.
   showLoading(def, { endless = false, section = 0 } = {}) {
     $('#lc-kicker').textContent = endless ? t('endless.title') + ' · ' + t('endless.section', { n: section + 1, name: '' }).replace(/:\s*$/, '') : t('load.level', { n: def.num });
     $('#lc-name').textContent = t(def.id + '.name');
-    $('#lc-place').textContent = t(def.id + '.place');
-    $('#lc-goal').innerHTML = `<b>${t('load.objective')}:</b> ${endless ? t('endless.desc') : t(def.id + '.goal')}`;
-    $('#lc-rem').textContent = t('controls.reminder');
     $('#lc-bar').style.width = '0%';
     const b = $('#lc-start');
     b.disabled = true;
@@ -235,7 +230,7 @@ export class UI {
     const b = $('#lc-start');
     $('#lc-bar').style.width = '100%';
     b.disabled = false;
-    b.textContent = t('load.start');
+    b.textContent = t(this.game.touch && this.game.touch.active ? 'load.start.touch' : 'load.start');
     b.focus({ preventScroll: true });
   }
 
@@ -295,6 +290,7 @@ export class UI {
       + `<dt>${t('res.best')}</dt><dd>${rec.bestScore} · ${fmtTime(rec.bestTime)}</dd>`;
     const cs = r.campaign;
     $('#res-campaign').textContent = cs ? t('res.campaignStats', { time: fmtTime(cs.time), kills: cs.kills, secrets: `${cs.secrets}/24`, score: cs.score }) : '';
+    $('#res-next').innerHTML = this._whyKeepGoing(r, def);
     const btns = $('#res-btns');
     btns.innerHTML = '';
     const mk = (cls, label, fn) => {
@@ -310,6 +306,34 @@ export class UI {
     mk('btn-ghost', t('res.main'), () => this.game.toMainMenu());
     this.show('results');
     setTimeout(() => first.focus({ preventScroll: true }), 60);
+  }
+
+  // The results card's reason to keep going: a skin just earned (worn at once),
+  // or how many stars the next one needs; the points to the next star on this
+  // level; and what the next level brings.
+  _whyKeepGoing(r, def) {
+    const g = this.game;
+    const sw = (sk) => `<span class="sw" style="background-image:url(${swatchUrl(sk)})"></span>`;
+    let html = '';
+    const fresh = newlyUnlocked();
+    if (fresh.length) {
+      const best = fresh[fresh.length - 1];
+      wearSkin(g, best.id);
+      setTimeout(() => g.audio.play('unlock', { bus: 'ui', gain: 0.75 }), 450);
+      html += `<div class="rk unlock">${sw(best)}<div><b>${t('res.newSkin', { name: t('skin.' + best.id) })}</b><small>${t('res.skinOn')}</small></div></div>`;
+    } else {
+      const stars = totalStars();
+      const ns = nextSkin(stars);
+      if (ns) {
+        const prev = SKINS.filter((x) => x.stars <= stars).pop();
+        const pct = Math.round(((stars - prev.stars) / Math.max(1, ns.stars - prev.stars)) * 100);
+        html += `<div class="rk goal">${sw(ns)}<div><b>${t('res.toSkin', { n: ns.stars - stars, name: t('skin.' + ns.id) })}</b><span class="bar"><i style="width:${pct}%"></i></span></div></div>`;
+      }
+    }
+    if (r.stars < 3 && r.nextStarIn > 0) html += `<div class="rk star">${t('res.nextStar', { n: r.nextStarIn })}</div>`;
+    const nextDef = def.num < 8 ? g.levels[def.num] : null;
+    if (nextDef) html += `<div class="rk upnext">${t('res.upNext', { name: t(nextDef.id + '.name') })}${nextDef.newEnemy ? ` · <b>${t('res.newEnemy', { name: t('enemy.' + nextDef.newEnemy) })}</b>` : ''}</div>`;
+    return html;
   }
 
   // ------------------------------------------------------------------ sections
@@ -346,6 +370,22 @@ export class UI {
       }
       panel.appendChild(grid);
       panel.appendChild(el('p', 'hint', '<br>' + t('style.hint')));
+    } else if (sec === 'armory') {
+      // weapon skins: earned with stars, worn on every gun
+      title(t('armory.title'));
+      const stars = totalStars();
+      panel.appendChild(el('p', 'hint', t('armory.stars', { n: stars, m: 24 })));
+      const grid = el('div', 'skins');
+      for (const sk of SKINS) {
+        const open = skinUnlocked(sk, stars);
+        const worn = g.skin && g.skin.id === sk.id;
+        const c = el('button', 'skin' + (worn ? ' selected' : '') + (open ? '' : ' locked'),
+          `<span class="sw" style="background-image:url(${swatchUrl(sk)})"></span><span class="nm">${t('skin.' + sk.id)}</span><span class="req">${open ? t(worn ? 'armory.worn' : 'armory.wear') : `&#9733; ${sk.stars}`}</span>`);
+        if (open) c.addEventListener('click', () => { this.click(); wearSkin(g, sk.id); this.renderSection('armory', panel); });
+        else c.disabled = true;
+        grid.appendChild(c);
+      }
+      panel.appendChild(grid);
     } else if (sec === 'controls') {
       title(t('controls.title'));
       const tb = el('table', 'keys');
@@ -578,17 +618,25 @@ export class UI {
   }
 
   // ------------------------------------------------------------------ HUD events
+  // Where a hit came from: the matching screen edge flashes. No words.
   hit(dir, amount = 10) {
-    this.hitdirText.textContent = t('hud.hit', { dir: t('hud.dir.' + dir) });
-    this.hitdirT = 1.3;
     this.edgeT[dir] = Math.min(1, 0.55 + amount / 25);
     this.trailHold = 0.45;
   }
 
+  // The X at the crosshair pops on every hit; a kill draws a bigger one with
+  // a ring bursting out of it, and a headshot is drawn in gold.
   hitMarker(head, kill = false) {
-    this.hitmarker.classList.toggle('head', !!head);
-    this.hitmarker.classList.toggle('kill', !!kill);
-    this.hitmarkerT = kill ? 0.22 : 0.14;
+    const h = this.hitmarker;
+    h.classList.remove('pop');
+    void h.offsetWidth; // restart the pop animation
+    h.classList.toggle('head', !!head);
+    h.classList.toggle('kill', !!kill);
+    h.classList.add('pop');
+    this.hitmarkerT = kill ? 0.34 : 0.16;
+    this.body.classList.remove('xhair-hit');
+    void this.body.offsetWidth;
+    this.body.classList.add('xhair-hit');
   }
 
   toast(msg, cls = '') {
@@ -597,24 +645,26 @@ export class UI {
     this.toastT = 2.0;
   }
 
-  area(text) {
-    this.areaEl.querySelector('span').textContent = text;
-    this.areaT = 2.6;
+  // One short onboarding line (see hints.js), shown for a few seconds.
+  tip(html, secs = 4.5) {
+    this.tipEl.innerHTML = html;
+    this.tipT = secs;
   }
 
-  tip(text) {
-    this.tipEl.textContent = text;
-    this.tipT = 6;
-  }
-
+  // The objective shows for a few seconds when it changes, then gets out of
+  // the way; the marker keeps pointing. Progress on it ("2 / 3") shows it
+  // again briefly. A survive timer stays up for as long as it runs.
   objective(text, isNew) {
-    this.objEl.querySelector('.txt').textContent = text;
+    const txt = this.objEl.querySelector('.txt');
+    const changed = txt.textContent !== text;
+    txt.textContent = text;
+    if (!text) { this.objShowT = 0; return; }
     if (isNew) {
       this.objEl.classList.remove('flash');
       void this.objEl.offsetWidth;
       this.objEl.classList.add('flash');
-      this.toast(t('hud.done'));
-    }
+      this.objShowT = 4.5;
+    } else if (changed) this.objShowT = Math.max(this.objShowT, 2.5);
   }
 
   checkpoint() {
@@ -637,57 +687,24 @@ export class UI {
     this.perfEl.classList.toggle('hidden', !show);
   }
 
-  showOverlay() {
-    const k = (s) => `<kbd class="k">${s}</kbd>`;
-    if (this.game.touch && this.game.touch.active) {
-      this.overlayEl.innerHTML = `<div class="h">${t('overlay.title')}</div><div class="grid" style="grid-template-columns:auto auto">
-        <div>${t('touch.move')}</div><div>${t('touch.movem')}</div><div>${t('touch.look')}</div><div>${t('touch.lookm')}</div>
-        <div>${k('&#8853;')}</div><div>${t('touch.fire')}</div><div>${k('&#9758;')}</div><div>${t('touch.use')}</div>
-        </div><div class="foot">${t('overlay.dismiss')}</div>`;
-      this.overlayEl.classList.remove('hidden');
-      this.overlayEl.style.opacity = '1';
-      this.overlayOn = true;
-      this.overlayShownAt = this.game.time;
-      return;
-    }
-    this.overlayEl.innerHTML = `<div class="h">${t('overlay.title')}</div><div class="grid">
-      <div>${k('W')}${k('A')}${k('S')}${k('D')}</div><div>${t('overlay.move')}</div><div>${k('Mouse')}</div><div>${t('overlay.look')}</div>
-      <div>${k('LMB')}</div><div>${t('overlay.fire')}</div><div>${k('R')}</div><div>${t('overlay.reload')}</div>
-      <div>${k('F')}</div><div>${t('overlay.use')}</div><div>${k('1')}${k('2')}</div><div>${t('overlay.swap')}</div>
-      <div>${k('V')}</div><div>${t('overlay.style')}</div><div>${k('Esc')}</div><div>${t('controls.pause')}</div>
-      </div><div class="foot">${t('overlay.dismiss')}</div>`;
-    this.overlayEl.classList.remove('hidden');
-    this.overlayEl.style.opacity = '1';
-    this.overlayOn = true;
-    this.overlayShownAt = this.game.time;
-  }
-
-  hideOverlay() {
-    if (!this.overlayOn) return;
-    this.overlayOn = false;
-    this.overlayEl.style.opacity = '0';
-    setTimeout(() => { if (!this.overlayOn) this.overlayEl.classList.add('hidden'); }, 450);
-  }
-
   onDeath() {
     this.body.classList.add('is-dead');
     this.toastT = 0;
-    this.hitdirT = Math.min(this.hitdirT, 0.6);
   }
 
   resetRun() {
     this.body.classList.remove('is-dead');
-    this.hitdirT = 0;
     this.toastT = 0;
     this.tipT = 0;
-    this.areaT = 0;
     this.feedT = 0;
     this.trail = this.game.player.health;
     for (const k in this.edgeT) this.edgeT[k] = 0;
     this.cpEl.classList.add('hidden');
     this.setFade(0, '#d9d9d9');
     this.markerEl.classList.add('hidden');
+    this.objShowT = 0;
     this.objective(this.game.mission.label || '', false);
+    this.objShowT = 0;
   }
 
   setFade(alpha, color) {
@@ -726,15 +743,14 @@ export class UI {
       this.lowBeatT -= dt;
       if (this.lowBeatT <= 0) { g.audio.play('heartbeat', { gain: 0.5 }); this.lowBeatT = 1.05; }
     } else this.lowBeatT = 0;
-    // ---- hit direction + edge flash
-    this.hitdirT = Math.max(0, this.hitdirT - dt);
-    this.hitdir.style.opacity = String(Math.min(1, this.hitdirT * 2.5));
+    // ---- hit direction: edge flash
     for (const k of Object.keys(this.edgeT)) {
       this.edgeT[k] = Math.max(0, this.edgeT[k] - dt * 1.8);
       this.edges[k].style.opacity = String(this.edgeT[k]);
     }
     this.hitmarkerT = Math.max(0, this.hitmarkerT - dt);
     this.hitmarker.style.opacity = this.hitmarkerT > 0 ? '1' : '0';
+    if (this.hitmarkerT <= 0) this.body.classList.remove('xhair-hit');
     // ---- prompt pill
     let key = '';
     const tg = P.alive ? P.lookTarget : null;
@@ -782,11 +798,15 @@ export class UI {
     }
     // ---- objective, survive timer, marker, score, boss
     const m = g.mission;
-    if (m && m.obj && m.obj.type === 'survive' && !g.endlessMode) {
+    const surviving = m && m.obj && m.obj.type === 'survive' && !g.endlessMode;
+    if (surviving) {
       this.objTimer.classList.remove('hidden');
       this.objTimer.textContent = t('hud.survive', { s: fmtTime(Math.ceil(m.surviveLeft)) });
     } else this.objTimer.classList.add('hidden');
     if (g.endlessMode) this.objEl.querySelector('.txt').textContent = `${t('endless.wave', { n: g.endless.wave })}`;
+    this.objShowT = Math.max(0, this.objShowT - realDt);
+    const showObj = (this.objShowT > 0 || surviving || g.endlessMode) && !(g.tutorial && g.tutorial.active);
+    this.objEl.classList.toggle('gone', !showObj);
     this._marker(m);
     const score = g.endlessMode ? g.endless.score : m && m.run ? m.run.killScore + m.run.bonus : 0;
     this.scoreEl.textContent = String(score);
@@ -802,18 +822,14 @@ export class UI {
       this.bossEl.querySelector('i').style.width = `${Math.max(0, boss.health / boss.maxHealth) * 100}%`;
     } else this.bossEl.classList.add('hidden');
     if (this.cpT > 0) { this.cpT -= dt; if (this.cpT <= 0) this.cpEl.classList.add('hidden'); }
-    // ---- tutorial overlay: gone once the player moves or fires
-    if (this.overlayOn && P.lastActed > this.overlayShownAt + 0.05) this.hideOverlay();
     // ---- toasts / tips / area label
     this.toastT = Math.max(0, this.toastT - dt);
     this.toastEl.style.opacity = this.toastT > 0 ? '1' : '0';
-    // tips wait until the controls overlay is gone
-    if (!this.overlayOn) this.tipT = Math.max(0, this.tipT - dt);
-    this.tipEl.style.opacity = this.tipT > 0.3 && !this.overlayOn ? '1' : '0';
+    // onboarding lines run on real time, so a slow-motion moment can't strand one
+    this.tipT = Math.max(0, this.tipT - realDt);
+    this.tipEl.style.opacity = this.tipT > 0.3 ? '1' : '0';
     this.styleToastT = Math.max(0, this.styleToastT - realDt);
     this.styleToastEl.style.opacity = this.styleToastT > 0 ? '1' : '0';
-    this.areaT = Math.max(0, this.areaT - dt);
-    this.areaEl.style.opacity = this.areaT > 0.3 ? '1' : '0';
   }
 
   _marker(m) {

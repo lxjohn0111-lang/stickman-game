@@ -226,7 +226,7 @@ function* build(K) {
   K.spawn(-20, 0, -27, S, 'rifle', { hold: true });
   K.spawn(-12, 0, -12, S, 'pistol');
   K.spawn(12, 0, -22, S, 'shotgun', { hold: true });
-  K.spawn(20, 0, -10, W, 'smg');
+  K.spawn(20, 0, -10, W, 'runt');
   K.spawn(-4, 0, -36, S, 'smg', { hold: true });
   K.spawn(5, 0, -48, S, 'pistol', { hold: true });
   // upper floor (the objective group)
@@ -236,7 +236,7 @@ function* build(K) {
   K.spawn(9.5, F2, -18, W, 'heavy', { group: 'upper', hold: true });
   K.spawn(18, F2, -11, W, 'rifle', { group: 'upper', hold: true });
   K.spawn(-10, F2, -25, S, 'smg', { group: 'upper', hold: true });
-  K.spawn(16, F2, -25, S, 'pistol', { group: 'upper' });
+  K.spawn(16, F2, -25, S, 'runt', { group: 'upper' });
   K.spawn(22, F2, -21.5, W, 'shotgun', { group: 'upper', hold: true });
   K.spawn(7.5, F2, -27.4, S, 'civilian', { group: 'civ' });
   // final: balconies and the lobby
@@ -277,10 +277,6 @@ function* build(K) {
   K.weapon('burst', 7, F2 + 0.6, -7, 1.3);
   K.weapon('mpistol', 19.5, 0.97, -13.5, 0.3);
   K.weapon('revolver', -22.4, F2 + 0.6, -7, 0.4);
-  K.area('area.L5.lobby', -8, -30, 8, -6, -1, 3);
-  K.area('area.L5.restaurant', -24, -30, -8, -6, -1, 3);
-  K.area('area.L5.rooms', -24, -30, 24, -6, 3, 9);
-  K.area('area.L5.court', -40, -90, 40, -30);
   K.data.arenas.push({ x: 0, y: 0, z: -14, yaw: S, entries: ['drive', 'restW', 'stairNE'] });
   K.data.arenas.push({ x: 0, y: 0, z: -40, yaw: N, entries: ['road', 'restW'] });
   yield 1;

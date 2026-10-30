@@ -64,8 +64,9 @@ export class Endless {
     this.inSection++;
     g.diff = this._diff();
     const pool = ['pistol', 'smg'];
-    if (this.wave >= 2) pool.push('rifle', 'shotgun');
+    if (this.wave >= 2) pool.push('rifle', 'shotgun', 'runt');
     if (this.wave >= 4) pool.push('heavy');
+    if (this.wave >= 5) pool.push('brute', 'runt');
     if (this.wave >= 6) pool.push('smg', 'rifle', 'heavy');
     const roles = shuffle(Array.from({ length: 12 }, (_, i) => pool[i % pool.length]));
     g.mission.wave({ count: Math.min(12, 3 + Math.floor(this.wave * 1.3)), roles, entries: this.arena.entries, hp: 1 + this.wave * 0.07, gap: 0.8, announce: false });

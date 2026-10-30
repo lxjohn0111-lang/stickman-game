@@ -738,7 +738,7 @@ function* build(K) {
   K.spawn(-19.5, 0, 7.2, E, 'rifle');
   K.spawn(-27.5, 0, 11.8, E, 'smg', { patrol: [[-27.5, 11.8], [-15, 11.8]] });
   K.spawn(-31.2, 0, 2.8, S, 'pistol');
-  K.spawn(-22, 0, -10, S, 'smg', { patrol: [[-22, -10], [-9, -7], [-22, -10], [-30, -14]] });
+  K.spawn(-22, 0, -10, S, 'runt', { patrol: [[-22, -10], [-9, -7], [-22, -10], [-30, -14]] });
   K.spawn(-6.5, 0, -23.5, S, 'rifle', { hold: true });
   K.spawn(-30, 0, -41, E, 'shotgun', { hold: true });
   K.spawn(TX, TW, TZ, S, 'sniper', { perch: true });
@@ -782,16 +782,6 @@ function* build(K) {
   K.item('ammo', -12.6, 0.25, -51.6);
   K.weapon('rifle', 1.55, 0.47, 2.25, 0.3);
   K.weapon('revolver', -25.6, 0.77, 9.5, 1.2);
-  K.tip('tip.doors', -2.2, 14.8, 2.2, 17.8);
-  K.tip('tip.swap', -2.9, 0.3, 2.7, 6.0);
-  K.tip('tip.shoot', -3.1, 0.3, 3.1, 14);
-  // areas for the location caption
-  K.area('area.roof', BX0, BZ0, BX1, BZ1, 4.9, 30);
-  K.area('area.stairs', -3, BZ0, BX1, BZ1, -1, 4.9);
-  K.area('area.kitchen', -12, BZ0, -3, BZ1, -1, 4.9);
-  K.area('area.canteen', BX0, BZ0, -12, BZ1, -1, 4.9);
-  K.area('area.gate', -200, -200, 200, -66);
-  K.area('area.yard', -200, -66, 200, BZ0);
   K.data.shadowToggles.push({ builder: 'roofProps', x0: BX0, x1: BX1, z0: BZ0, z1: BZ1, yMax: 4.6 });
   K.data.arenas.push({ x: -14, y: 0, z: -30, yaw: N, entries: ['yardE', 'yardW', 'gate1', 'gate2'] });
   K.data.arenas.push({ x: -24, y: 0, z: 8, yaw: E, entries: ['yardE', 'yardW'] });

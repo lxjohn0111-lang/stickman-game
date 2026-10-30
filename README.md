@@ -1,10 +1,24 @@
 # One Way Out
 
-A first-person stickman shooter campaign for the browser: eight levels, four difficulties (Super Easy by default, so children can enjoy it too), Endless Mode, and two visual styles you can switch at any moment (Neobrutalist by default, Classic ink-on-paper as the alternative). It is built for portals like CrazyGames and Poki: it's playable within two clicks, it works with keyboard and mouse or with touch controls on phones and tablets, it pauses on focus loss, and it saves progress through the CrazyGames SDK's data module, or localStorage on Poki and offline.
+A first-person stickman shooter campaign for the browser: eight levels, four difficulties (Super Easy by default, so children can enjoy it too), Endless Mode, and two visual styles you can switch at any moment (Neobrutalist by default, Classic ink-on-paper as the alternative). It is built for portals like CrazyGames and Poki: it opens straight into play — no menu, no Play button — and a first-time player learns it in a few seconds of slow motion on the first level's roof; it works with keyboard and mouse or with touch controls on phones and tablets, it pauses on focus loss, and it saves progress through the CrazyGames SDK's data module, or localStorage on Poki and offline.
 
 (The game was called *Way Through* before; saves from that version carry over.)
 
 Everything is built at load time. The geometry is boxes, cylinders and cones outlined with screen-space ink lines, every texture is drawn on a canvas, and every sound and both music loops are synthesised with the Web Audio API. There are no image, model or audio files.
+
+## First run
+
+The game opens straight into play. There is no menu and no Play button in the way, and no screen of text to read first.
+
+A first-time player lands on North Gate's roof, inside a short **interactive tutorial** (`src/tutorial.js`) that uses the level's own map and one of its own guards on the roof:
+
+1. Time slows to a crawl and the screen edges fade out (grey, dark, a little blurred), so the slow motion is plain to see. A big red arrow hangs over the guard's head, and one short line says how to shoot: "Click — Shoot him", or "Tap ⊕ to shoot him" on a phone. The view starts on the guard, so the first click is the shot; on a desktop that same click captures the mouse. Nobody notices you while you line it up, and you can't be hurt.
+2. Once he is down, one more line: "Watch your ammo · R reload", with the ammo counter pulsing and the arrow pointing at it (on a phone the reload button pulses too).
+3. Time eases back to normal, the first objective shows for a few seconds, and you are on your own.
+
+It runs once (`tutorialSeen` in the save). A returning player boots straight back into the level they were on: on a phone directly, on a desktop behind one small "Click to play" pill over the live level, since the browser needs a click to capture the mouse. A player who had already won a level before the tutorial existed never gets it. A phone held upright waits with the "turn your device" card and starts the tutorial when it is turned. `?menu` opens on the old main menu instead (the test suites use it); in the game the menu is one step away, from Pause.
+
+After the tutorial the game keeps teaching **one line at a time, once each** (`src/hints.js`), at the moment it matters: the magazine running low, an empty gun with a loaded one on the other slot, a gun lying in front of you, taking a beating, the first checkpoint, the first runt or brute in sight, a long walk without sprinting, a long spray without steady aim, five kills without a headshot. Each is remembered in the save and never shown twice, and two never come close together. Phones get their own wording.
 
 ## Launch
 
@@ -47,7 +61,7 @@ npm run watch           # rebuild dist/game.js on change
 
 | # | Level | Objective | Landmark | Final encounter |
 | --- | --- | --- | --- | --- |
-| 1 | North Gate | Off the roof, through kitchen and canteen, across the yard, out through the gate. This is the original map, unchanged; a tutorial overlay and tips teach the controls. | Water tower | Defenders at the water tower and gate on several heights; a reinforcement wave through the gate |
+| 1 | North Gate | Off the roof, through kitchen and canteen, across the yard, out through the gate. This is the original map, unchanged; the first-kill tutorial runs on its roof, and the first runt waits in the yard. | Water tower | Defenders at the water tower and gate on several heights; a reinforcement wave through the gate |
 | 2 | Container Port (sunset) | Cross the container yard to the warehouse, reach the harbour control room, open the security gate | Gantry crane, cargo ship | Riflemen on container roofs and a heavy at the control room; a wave through the opened gate |
 | 3 | Underground Station | Restore power in two electrical rooms, then reach the maintenance exit | Walk-through train | After the power returns: attacks from both platforms and inside the train |
 | 4 | Desert Outpost (dust) | Destroy three radio transmitters, then escape through the vehicle checkpoint | Transmitter masts, watchtowers | Watchtower sniper, riflemen behind barriers, advancers in the trenches, plus a wave from the flanks |
@@ -62,13 +76,14 @@ A first run is designed to take about 45 to 60 minutes, and each level about 5 t
 
 ### Progression and saving
 
-- **Play / Continue** starts the latest unlocked level. **Level Select** shows a preview rendered from the level itself, plus name, best score, best time, stars and secrets. Levels unlock in order, and finished levels can be replayed.
+- **Play / Continue** (on the main menu, from Pause) starts the latest unlocked level. **Level Select** shows a preview rendered from the level itself, plus name, best score, best time, stars and secrets. Levels unlock in order, and finished levels can be replayed.
 - **Super Easy / Easy / Normal / Hard** change enemy health, accuracy, reaction time, damage, how much the enemies move, the number of optional pickups and how far health regenerates (100 / 100 / 75 / 50). They never change the layout, and the player can switch at any time from Level Select or Settings.
   - **Super Easy** is what a fresh install starts on, so a child or a first-time player is not thrown in at the deep end: the enemies' aim cone is 2.8&times; wider, so most of their fire goes wide; they take about twice as long to open fire and notice you less than half as fast; their bullets are slower and do 30% damage; they have half the health; and they stay roughly where they are — 55% movement speed, a 60% chance of holding their ground instead of strafing, and riflemen change cover after a burst only 15% of the time instead of 65%. Scores on it count 0.6&times;.
   - The other three are exactly as they were. Score multipliers: 0.6 / 0.8 / 1.0 / 1.3.
 - **Saved** under `onewayout.save.v1`, `onewayout.settings.v1` and `onewayout.style`: unlocked levels, last level, per-level best score, time, stars and secrets, achievements, Endless records, campaign totals, settings and style. On CrazyGames these go through the SDK's data module, so a signed-in player's progress follows their account across devices; elsewhere they go to localStorage. Old `waythrough.*` saves are moved to the new keys once. Level preview images are a cache and always stay in localStorage.
-- **Loading card:** level name, place, objective and a control reminder, with a progress bar while the level builds in stages. Then "Click to start".
-- **Results card:** time, kills, headshots, accuracy, damage taken, secrets and score, with the stars awarded and **Next Level / Replay / Main Menu** buttons.
+- **Loading card:** which level, its name and a progress bar while it builds in stages, then "Click to play". Nothing to read: the objective shows in the level itself.
+- **Results card:** time, kills, headshots, accuracy, damage taken, secrets and score, with the stars awarded and **Next Level / Replay / Main Menu** buttons, and above them **a reason to keep going**: a weapon skin just earned (put on your guns at once, with a chime), or how many more stars the next one needs with a progress bar toward it; how many points the next star on this level was away; and what the next level brings ("Up next: Container Port · new enemy: the Brute").
+- **Weapon skins** are the long-term goal: eight of them, earned with campaign stars (2, 4, 7, 10, 13, 17 and 21 of the 24) and chosen in the **Armory** (main menu and Pause). See below.
 - **Death card:** **Restart Checkpoint / Restart Level / Main Menu**.
 
 ### Scoring
@@ -81,8 +96,9 @@ Kills are worth 100 and headshots add 50. Each kill multiplies by a combo: +10% 
 
 ## Gameplay systems
 
-- **Health:** a bar at the lower left reading "76 / 100". It is green, turns yellow below 50, and turns red and pulses below 25, with a delayed trailing segment when you take damage. A dashed mark shows the regeneration limit. Regeneration starts after 5 s without damage, at 8 hp/s, up to 100 / 75 / 50 depending on difficulty. Health kits give +35, never above 100, and are left on the floor if you're at full health. "HIT - AHEAD / LEFT / RIGHT / BEHIND" still appears and the matching screen edge flashes dark red. The Classic bar is white with a black ink outline; the Neo bar has a 3 px border, a hard shadow and bright colours. Switching style never touches health.
-- **Weapons:** SMG, pump shotgun, AK rifle, burst rifle (main); pistol, auto pistol, revolver (sidearm). Each has its own silhouette, recoil, fire rate, spread, reload and sound. You carry one of each. Guns dropped by you or by enemies keep their ammo, and walking over a gun you already carry takes its ammo. The ammo panel sits beside the health bar with both slots and a reload bar.
+- **Health:** a bar at the lower left reading "76 / 100". It is green, turns yellow below 50, and turns red and pulses below 25, with a delayed trailing segment when you take damage. A dashed mark shows the regeneration limit. Regeneration starts after 5 s without damage, at 8 hp/s, up to 100 / 75 / 50 depending on difficulty. Health kits give +35, never above 100, and are left on the floor if you're at full health. The screen edge a hit came from flashes dark red (no words). The Classic bar is white with a black ink outline; the Neo bar has a 3 px border, a hard shadow and bright colours. Switching style never touches health.
+- **Weapons:** SMG, pump shotgun, AK rifle, burst rifle (main); pistol, auto pistol, revolver (sidearm). Each has its own silhouette, recoil, fire rate, spread, reload and sound. You carry one of each. Guns dropped by you or by enemies keep their ammo, and walking over a gun you already carry takes its ammo. The ammo panel sits beside the health bar with both slots and a reload bar. Spent casings flick out of the right side and tumble away (the shotgun's on the pump; the revolver keeps its brass), the muzzle flash is big, and the shotgun and revolver punch the view in a touch. A click too quick for any frame to see still fires an automatic weapon once.
+- **Weapon skins** (`src/skins.js`): Standard, Carbon, Tiger, Arctic, Gold, and three energy skins — Plasma (glowing cyan circuitry), Ion (a magenta honeycomb) and Ghost (white scan lines). One skin dresses every gun you hold. Patterns are drawn on canvases and looked up from the gun's own coordinates (a triplanar lookup in the shader), so stripes and camo keep their size across every part; the energy skins pulse, their lines flow along the gun, and they tint the muzzle flash and your tracers. In Classic every skin is drawn in ink: patterns in black on white, the energy skins inverted.
 - **Enemies** keep the stickman silhouette:
   - **Pistol:** low health, fast, accurate single shots.
   - **SMG:** aggressive short bursts that keep pushing.
@@ -91,9 +107,12 @@ Kills are worth 100 and headshots add 50. Each kill multiplies by a combo: +10% 
   - **Heavy:** 1.2× size, slow, lots of health, with a visible armour vest where hits spark and do less damage. It staggers after repeated hits, then shrugs hits off for 3.4 s so it can't be stun-locked.
   - **Sniper:** a thin red laser tracks you for about 0.8 s, freezes for the last 0.25 s, then fires, so moving dodges it.
   - **Commander:** a boss.
+  - **Runt:** small (0.72×), with an oversized head and a spiky crest (neon green in Neo). 40 health, fast, rushes in spraying an auto pistol and skitters side to side. From Level 1.
+  - **Brute:** a giant (1.45×) in a horned helmet and big shoulder plates (orange in Neo, grey in Classic). 430 health, slow, staggers after repeated hits, and now and then charges straight at you with a roar: contact hurts and shoves you, and stepping aside makes him overshoot. His collision height stays door-sized, so he still fits the levels. From Level 2.
   - **Civilians:** grey (Classic) or blue (Neo), with their hands up.
   - Fighters are solid black in both styles, so they stand out against Classic's white paper as much as against Neo's colours.
 - **Enemy spawns:** reinforcements come in only through doors, gates, stairways or distant entries that you can't see and that aren't behind you.
+- **Hits feel like hits.** Every hit pops an X at the crosshair (gold for a headshot) with a tick, swells the crosshair, flashes the body white (pale grey on Classic's paper) and jolts it along the shot. A kill stops the world for a few frames (hitstop), punches the view in, plays a thump with a bright pop (a ding for a headshot), draws a bigger X with a ring bursting out of it, throws the ragdoll harder with a little hop, and bursts ink at the hit point: a starburst and a ring of specks. A headshot kill, or felling a big one, adds a short slow-motion beat in which game sounds go deeper and duller. Mouse look never slows, so aiming stays sharp.
 - **Hits are black ink, never red.** The game is rated for ages 12 and up, so nothing on screen reads as blood. A hit throws dark specks that mark the wall behind the victim, and a downed body leaves a dark pool, drawn in the same ink as the bullet holes and the outlines. Both are a shade off the outline black so the marks still read as their own thing, and both are visible on Classic's white paper and on Neo's colours. All of it lives in `src/fx.js` (`SPATTER`, `hitSpatter()`); the only reds left in the game are UI (the low-health bar, the hit-direction edge flash, the headshot marker, the boss bar and the health-kit cross).
 - **Checkpoints** arm when you pass them and activate once the fighting near you has ended, with a "CHECKPOINT" notice. Restoring one gives you full health, the weapons and ammo you had there (topped up to at least three magazines per gun, so a checkpoint reached on an empty gun can't trap you), and the enemies that were still alive then (at their posts). It also restores objective state, pickups, doors, hazards and level state such as power, alarms and the helicopter. Cleared encounters never respawn.
 - **Level machinery:**
@@ -113,8 +132,8 @@ Kills are worth 100 and headshots add 50. Each kill multiplies by a combo: +10% 
 
 ## Web-portal UX
 
-- **Two clicks** to play: Play, then Start on the loading card (which is also the click pointer lock needs).
-- On Level 1 a **controls overlay** stays up until you move or fire.
+- **No clicks** to play: the game opens in the level (see First run). The menu is one step away, from Pause.
+- **Less to read:** the objective shows for a few seconds when it changes (and briefly when its count moves), then gets out of the way while the diamond marker keeps pointing; a survive timer stays up while it runs. No location captions, no wall of controls, no words on hits.
 - **Auto-pause** when the tab or window loses focus. Resuming waits for a click and a successful pointer lock; if the browser refuses, a "Click to resume" card appears.
 - **Localisation:** every player-facing string lives in `src/i18n.js`, so adding a language is one more table.
 - **How to play** names the starting difficulty and where to change it, so a player who finds Super Easy too gentle is not left hunting for the setting.
@@ -144,7 +163,7 @@ Touch screens are detected at start (a coarse primary pointer); a touch laptop s
 - **Buttons:** fire (hold for automatic weapons), steady aim (toggle), jump, crouch (toggle), reload, weapon swap, visual style and pause. The interaction prompt under the crosshair ("Open", "Swap for AK Rifle"...) is itself the button. Button size is a setting.
 - **Aim assist** (a setting, on by default): while the fire button is held, the view is pulled gently toward the enemy nearest the crosshair (within about 6°).
 - **Layout:** health and ammo move to the top right so thumbs don't cover them; menus, Level Select and every card are laid out for landscape phone screens down to 740x360, and the menus, settings, style choice and cards also work in portrait. Only play needs landscape: turning the phone upright pauses, and a level started or resumed in portrait shows a "Turn your device" card and continues once it is turned.
-- **Defaults:** Low quality on the first run (the player can raise it), no pointer lock, touch wording in the hints, tips, tutorial overlay and controls page. Outside CrazyGames, starting a level also asks for fullscreen and a landscape lock where the browser allows it.
+- **Defaults:** Low quality on the first run (the player can raise it), no pointer lock, touch wording in the tutorial, the onboarding lines and the controls page. Outside CrazyGames, starting a level also asks for fullscreen and a landscape lock where the browser allows it.
 
 ## Portals: CrazyGames and Poki
 
@@ -246,7 +265,10 @@ src/
   items.js              pickups: guns (shared instanced gun meshes), health kits, ammo boxes, secret stars
   hazards.js            conveyors, steam vents, presses, lifts, panels, destructibles, lamp flicker
   env.js                rain, snow + footprints, dust, wet-street reflections
-  ui.js                 HUD, menus, Level Select, cards, settings, minimap
+  ui.js                 HUD, menus, Level Select, Armory, cards, settings, minimap
+  tutorial.js           the first-kill tutorial (slow motion, red arrow, two short lines)
+  hints.js              one-time onboarding lines at the moment they matter
+  skins.js              weapon skins: patterns, triplanar shader, unlocks by stars
   i18n.js               all player-facing text
   platform.js           picks the portal SDK on the page; storage and ad breaks
   platforms/            crazygames.js and poki.js, one self-contained adapter each
@@ -262,7 +284,7 @@ tests/                  Playwright harness, objective bot and test suites
 The browser tests need Playwright with Chromium; SwiftShader WebGL is fine.
 
 ```sh
-npm test                          # boot, systems, pointer lock, UI flows, qualities, mobile, both SDKs, the upload zips, full campaign
+npm test                          # boot, systems, tutorial, features, pointer lock, UI flows, qualities, mobile, both SDKs, the upload zips, full campaign
 node tests/systems.mjs            # movement, weapons, health, slots, enemies, checkpoints, styles, quality
 node tests/campaign.mjs           # all 8 levels in sequence through the menus on Normal
                                   # (--from 4 --to 8 to run part of it)
@@ -273,6 +295,8 @@ node tests/mobile.mjs             # touch controls and layout on an emulated pho
 node tests/sdk-crazygames.mjs     # CrazyGames SDK integration against a recording stand-in
 node tests/sdk-poki.mjs           # Poki SDK integration against a recording stand-in
 node tests/boot.mjs               # the page's boot watchdog, against the portal build
+node tests/tutorial.mjs           # straight into play; the first-kill tutorial on desktop and phone
+node tests/features.mjs           # hit juice, runt and brute, skins, results goals, onboarding lines
 node tests/portal.mjs             # the upload zips, framed cross-origin like a portal
 node tests/views.mjs 3 "x,y,z,yaw,pitch"   # screenshots of a spot in both styles
 ```
@@ -310,7 +334,7 @@ The results below come from headless Chromium with SwiftShader.
   - Level Select shows 8 cards with previews, stars, bests and locks, and Continue picks the next level.
   - Endless stays locked until the campaign is won.
   - Buttons react to hover.
-  - The loading card, the health bar (with its trailing segment, hit direction and red low-health state), pause on focus loss, the death card, Restart Level and the results card all work.
+  - The loading card, the health bar (with its trailing segment, the edge flash from the hit's side and red low-health state), pause on focus loss, the death card, Restart Level and the results card all work.
   - Endless waves rise, sections change, the run ends on death and saves the best wave.
   - Every handwritten title has all its letters, and there are no page errors.
 - **Qualities** (`tests/qualities.mjs`): all eight levels loaded and played for 12 s with the autopilot at Low, Medium and High, with no errors. Colliders, nav graph, spawns and pickups were identical at every preset; only the pixel ratio (0.75 / 1.25 / 2, capped by the display) and the shadow map (1024 / 1536 / 2048) changed, along with outline and particle detail.

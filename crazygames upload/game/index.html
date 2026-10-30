@@ -75,20 +75,28 @@
   #edge-right { top: 0; bottom: 0; right: 0; width: 20%; background: linear-gradient(to left, rgba(110,0,0,.85), rgba(110,0,0,0)); }
   #crosshair { position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px 0 0 -2px; border-radius: 50%; background: var(--dot); box-shadow: 0 0 0 1px rgba(255,255,255,.9); }
   body.style-neo #crosshair { width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; box-shadow: 0 0 0 2px #000; }
-  #hitmarker { position: absolute; left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; opacity: 0; }
-  #hitmarker::before, #hitmarker::after { content: ""; position: absolute; left: 50%; top: 0; width: 1.5px; height: 100%; margin-left: -.75px; background: linear-gradient(to bottom, #111 0 30%, transparent 30% 70%, #111 70% 100%); }
+  /* hit feedback: an X that pops on every hit, bigger with a ring bursting
+     out of it on a kill, gold for headshots; the crosshair swells with it */
+  #hitmarker { position: absolute; left: 50%; top: 50%; width: 26px; height: 26px; margin: -13px 0 0 -13px; opacity: 0; --hm: #111; --hmw: 2.5px; }
+  #hitmarker::before, #hitmarker::after { content: ""; position: absolute; left: 50%; top: 0; width: var(--hmw); height: 100%; margin-left: calc(var(--hmw) / -2); background: linear-gradient(to bottom, var(--hm) 0 32%, transparent 32% 68%, var(--hm) 68% 100%); filter: drop-shadow(0 0 1px #fff); }
   #hitmarker::before { transform: rotate(45deg); } #hitmarker::after { transform: rotate(-45deg); }
-  #hitmarker.head::before, #hitmarker.head::after { background: linear-gradient(to bottom, #7a0c0c 0 32%, transparent 32% 68%, #7a0c0c 68% 100%); }
-  #hitmarker.kill { width: 30px; height: 30px; margin: -15px 0 0 -15px; }
-  body.style-neo #hitmarker::before, body.style-neo #hitmarker::after { width: 3px; margin-left: -1.5px; }
+  #hitmarker.head { --hm: #c99700; }
+  #hitmarker.kill { width: 40px; height: 40px; margin: -20px 0 0 -20px; --hmw: 4px; }
+  #hitmarker.kill.pop { box-shadow: 0 0 0 0 rgba(0,0,0,0); animation: hmpop .16s ease-out both, hmring .34s ease-out both; border-radius: 50%; }
+  #hitmarker.pop { animation: hmpop .16s ease-out both; }
+  @keyframes hmpop { 0% { transform: scale(.45) rotate(-12deg); } 55% { transform: scale(1.25) rotate(4deg); } 100% { transform: scale(1) rotate(0); } }
+  @keyframes hmring { 0% { box-shadow: 0 0 0 0 var(--hm); } 100% { box-shadow: 0 0 0 26px rgba(0,0,0,0); } }
+  body.style-neo #hitmarker { --hm: #000; --hmw: 4px; }
+  body.style-neo #hitmarker::before, body.style-neo #hitmarker::after { filter: drop-shadow(0 0 0 #fff) drop-shadow(1px 1px 0 #fff); }
+  body.style-neo #hitmarker.head { --hm: #ffd400; }
+  body.style-neo #hitmarker.head::before, body.style-neo #hitmarker.head::after { filter: drop-shadow(1.5px 1.5px 0 #000); }
+  body.style-neo #hitmarker.kill { --hmw: 6px; }
+  body.xhair-hit #crosshair { transform: scale(1.9); transition: transform .05s; }
+  #crosshair { transition: transform .18s ease-out; }
   #prompt { position: absolute; left: 50%; top: 57%; transform: translateX(-50%); padding: 4px 11px 4px 5px; border: var(--line); border-radius: 999px; background: var(--pill-bg); font-size: 12px; letter-spacing: .04em; white-space: nowrap; box-shadow: var(--shadow); display: flex; align-items: center; gap: 7px; }
   body.style-neo #prompt { box-shadow: 3px 3px 0 #000; font-family: var(--sans); font-weight: 800; }
   #prompt kbd, .kk { display: inline-block; min-width: 18px; padding: 1px 5px; border: var(--line); border-radius: 999px; font: inherit; font-weight: 700; text-align: center; background: var(--paper); }
   #prompt.locked { opacity: .75; }
-  #hitdir { position: absolute; left: 50%; top: 67%; transform: translateX(-50%); text-align: center; font-family: var(--mono); font-size: 11px; letter-spacing: .28em; text-transform: uppercase; opacity: 0; color: #111; text-shadow: 0 0 3px #fff, 0 0 6px #fff; }
-  #hitdir .rule { width: 120px; height: 1px; background: #7a0c0c; margin: 0 auto 6px; box-shadow: 0 0 2px #fff; }
-  body.style-neo #hitdir { font-weight: 700; color: #000; text-shadow: none; background: #fff; border: 3px solid #000; padding: 4px 10px; box-shadow: 3px 3px 0 #000; }
-  body.style-neo #hitdir .rule { height: 3px; background: #ff2d3d; box-shadow: none; }
 
   /* health + ammo, lower left */
   #status { position: absolute; left: 22px; bottom: 20px; display: flex; align-items: flex-end; gap: 12px; }
@@ -150,28 +158,40 @@
   body.style-neo #bossbar .bar i { background: #ff2d3d; }
 
   #fps { position: absolute; right: 22px; bottom: 8px; font-size: 10px; font-family: var(--mono); color: #111; text-shadow: 0 0 3px #fff; }
-  #area { position: absolute; left: 50%; top: 22px; transform: translateX(-50%); font-family: var(--mono); font-size: 11px; letter-spacing: .32em; text-transform: uppercase; opacity: 0; transition: opacity .6s; text-align: center; color: #111; text-shadow: 0 0 4px #fff; }
-  #area .rule { width: 60px; height: 1px; background: #111; margin: 0 auto 5px; }
-  body.style-neo #area { background: #fff; border: 3px solid #000; padding: 4px 10px; font-weight: 800; box-shadow: 3px 3px 0 #000; text-shadow: none; }
-  body.style-neo #area .rule { display: none; }
   #toast { position: absolute; left: 50%; bottom: 17%; transform: translateX(-50%); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; opacity: 0; transition: opacity .3s; padding: 5px 12px; background: var(--panel); border: var(--line); box-shadow: var(--shadow); white-space: nowrap; }
   #toast.secret { border-color: #b08a00; }
   body.style-neo #toast { font-family: var(--sans); font-weight: 800; box-shadow: 3px 3px 0 #000; }
   body.style-neo #toast.secret { background: #ffd23f; }
-  #tip { position: absolute; left: 50%; bottom: 23%; transform: translateX(-50%); max-width: 520px; font-size: 12px; line-height: 1.45; text-align: center; padding: 7px 14px; background: rgba(255,255,255,.92); border: var(--line); opacity: 0; transition: opacity .4s; }
-  body.style-neo #tip { background: var(--accent-3); font-family: var(--sans); font-weight: 700; box-shadow: 4px 4px 0 #000; }
+  /* one onboarding line at a time (hints.js) */
+  #tip { position: absolute; left: 50%; bottom: 24%; transform: translateX(-50%); font-size: 13px; line-height: 1.4; text-align: center; padding: 6px 14px; background: rgba(255,255,255,.94); border: var(--line); border-radius: 999px; opacity: 0; transition: opacity .35s; white-space: nowrap; }
+  #tip kbd, #tut-text kbd { display: inline-block; min-width: 18px; padding: 0 6px; margin: 0 2px; border: var(--line); border-radius: 6px; font: inherit; font-weight: 800; text-align: center; background: var(--paper); }
+  body.style-neo #tip { background: var(--accent-3); font-family: var(--sans); font-weight: 800; box-shadow: 3px 3px 0 #000; }
+  #objective { transition: opacity .5s, transform .5s; }
+  #objective.gone { opacity: 0; transform: translateY(-8px); }
+
+  /* first-kill tutorial (tutorial.js): faded edges for slow motion, a big red
+     arrow over the target, one short line */
+  #slowmo { position: absolute; inset: 0; opacity: 0; transition: opacity .45s ease-out; background: rgba(12,14,26,.62); -webkit-backdrop-filter: grayscale(1) blur(2px); backdrop-filter: grayscale(1) blur(2px);
+    -webkit-mask-image: radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,.7) 60%, #000 90%); mask-image: radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,.7) 60%, #000 90%); }
+  body.style-neo #slowmo { background: rgba(38,10,78,.58); }
+  #tut-arrow { position: absolute; left: 0; top: 0; width: 54px; height: 70px; margin: -70px 0 0 -27px; transform-origin: 50% 100%; will-change: transform; }
+  #tut-arrow svg { display: block; width: 100%; height: 100%; overflow: visible; animation: tutbob .55s ease-in-out infinite alternate; }
+  #tut-arrow path { fill: #ff2d3d; stroke: #111; stroke-width: 4.5; stroke-linejoin: round; }
+  body.style-classic #tut-arrow path { fill: #d3121e; }
+  @keyframes tutbob { from { transform: translateY(-12px); } to { transform: translateY(0); } }
+  #tut-text { position: absolute; left: 50%; top: 66%; transform: translateX(-50%); padding: 8px 18px; background: #fff; border: var(--line-strong); border-radius: 999px; font: 800 15px var(--sans); letter-spacing: .03em; white-space: nowrap; box-shadow: var(--shadow); transition: opacity .35s; animation: fadein .25s ease-out both; }
+  #tut-text.out { opacity: 0; }
+  body.style-neo #tut-text { box-shadow: 4px 4px 0 #000; }
+  #ammo.tut-pulse, #touch .tbtn.tut-pulse { animation: tutpulse .45s ease-in-out infinite alternate; outline: 3px solid #ff2d3d; outline-offset: 3px; }
+  @keyframes tutpulse { from { transform: scale(1); } to { transform: scale(1.08); } }
+  /* while the tutorial holds the moment, nothing else competes for attention */
+  body.tut-on #objective, body.tut-on #scorebox, body.tut-on #marker, body.tut-on #tip { visibility: hidden; }
   #cpnote { position: absolute; left: 50%; top: 30%; transform: translateX(-50%); font-size: 13px; letter-spacing: .5em; text-transform: uppercase; padding: 7px 18px 7px 24px; border-top: 1px solid #111; border-bottom: 1px solid #111; background: rgba(255,255,255,.9); }
   #cpnote.show { animation: pop 1.8s ease-out both; }
   body.style-neo #cpnote { border: 3px solid #000; background: #2dff7a; font-family: var(--sans); font-weight: 900; box-shadow: 4px 4px 0 #000; }
-  #overlay { position: absolute; left: 50%; bottom: 25%; transform: translateX(-50%); padding: 12px 18px; background: rgba(255,255,255,.94); border: var(--line); box-shadow: var(--shadow); font-size: 12px; transition: opacity .4s; }
-  #overlay .grid { display: grid; grid-template-columns: repeat(4, auto); gap: 6px 18px; align-items: center; }
-  #overlay .grid div { white-space: nowrap; }
-  #overlay .h { font-size: 10px; letter-spacing: .3em; text-transform: uppercase; margin-bottom: 8px; color: var(--muted); }
-  #overlay .foot { margin-top: 10px; text-align: center; font-size: 11px; letter-spacing: .2em; text-transform: uppercase; animation: pulse 1.6s ease-in-out infinite; }
-  body.style-neo #overlay { font-family: var(--sans); font-weight: 700; }
   #perf { position: absolute; left: 50%; top: 12px; transform: translateX(-50%); font-size: 11px; padding: 5px 12px; background: #fff; border: var(--line); }
   body.style-neo #perf { background: var(--accent); font-family: var(--sans); font-weight: 800; box-shadow: 3px 3px 0 #000; }
-  body.is-dead #crosshair, body.is-dead #prompt, body.is-dead #hitmarker, body.is-dead #toast, body.is-dead #marker, body.is-dead #overlay, body.is-dead #tip { display: none; }
+  body.is-dead #crosshair, body.is-dead #prompt, body.is-dead #hitmarker, body.is-dead #toast, body.is-dead #marker, body.is-dead #tip, body.is-dead #tut-text, body.is-dead #tut-arrow { display: none; }
   #fade { position: fixed; inset: 0; pointer-events: none; opacity: 0; background: #d9d9d9; transition: opacity .25s; }
 
   /* ---------------- screens ---------------- */
@@ -274,10 +294,6 @@
   .card .kicker { font-size: 11px; letter-spacing: .32em; text-transform: uppercase; color: var(--muted); }
   .card .lname { font-size: 22px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; margin: 4px 0 2px; }
   body.style-neo .card .lname { font-family: var(--title-font); }
-  .card .place { font-size: 12px; color: var(--muted); margin-bottom: 14px; }
-  .card .goal { max-width: 440px; margin: 0 auto 12px; font-size: 13px; line-height: 1.5; text-align: left; border-left: 3px solid #111; padding-left: 10px; }
-  body.style-neo .card .goal { border-left: 6px solid #ff2bd6; }
-  .card .reminder { font-size: 11px; color: var(--muted); letter-spacing: .06em; margin: 10px 0 16px; }
   .progress { width: 300px; height: 8px; border: var(--line); margin: 10px auto 16px; }
   .progress i { display: block; height: 100%; width: 0; background: #111; transition: width .1s; }
   body.style-neo .progress i { background: #ff2bd6; }
@@ -306,9 +322,36 @@
   .badge { display: inline-block; margin: 0 0 10px; padding: 3px 10px; border: var(--line); font-size: 11px; letter-spacing: .2em; text-transform: uppercase; }
   body.style-neo .badge { background: var(--accent); }
   .campaign { font-size: 12px; margin: 0 0 14px; color: var(--muted); }
-  #clicklock { align-items: center; justify-content: center; cursor: pointer; background: rgba(255,255,255,.4); }
-  #clicklock .card { padding: 20px 30px; }
-  #clicklock .card p { margin: 6px 0 0; font-size: 12px; color: var(--muted); }
+  /* Armory: weapon skins, earned with stars */
+  .skins { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px; }
+  .skin { all: unset; cursor: pointer; display: flex; flex-direction: column; gap: 4px; padding: 8px; border: var(--line); background: #fff; box-shadow: var(--shadow); transition: transform var(--speed), box-shadow var(--speed); }
+  .skin .sw { display: block; height: 58px; border: var(--line); background-size: 96px 96px; }
+  .skin .nm { font-weight: 800; letter-spacing: .08em; text-transform: uppercase; font-size: 12px; }
+  .skin .req { font-size: 11px; color: var(--muted); }
+  .skin:hover:not(.locked) { transform: translateY(-2px); }
+  .skin.selected { outline: 3px solid #111; outline-offset: 2px; }
+  .skin.selected .req { color: var(--ink); font-weight: 800; }
+  .skin.locked { cursor: not-allowed; }
+  .skin.locked .sw { filter: grayscale(1) brightness(.55); }
+  body.style-neo .skin { box-shadow: 4px 4px 0 #000; font-family: var(--sans); }
+  body.style-neo .skin.selected { outline: 4px solid #ff2bd6; }
+  /* results: why keep going (next skin, next star, next level) */
+  #res-next { display: flex; flex-direction: column; gap: 6px; align-items: center; margin: 2px auto 12px; max-width: 420px; font-size: 13px; }
+  #res-next .rk { display: flex; gap: 10px; align-items: center; text-align: left; }
+  #res-next .sw { flex: none; width: 46px; height: 32px; border: var(--line); background-size: 64px 64px; }
+  #res-next .unlock { padding: 8px 12px; border: var(--line-strong); background: #fff; animation: fadein .3s ease-out .35s both; }
+  #res-next .unlock b { font-size: 15px; }
+  #res-next small { display: block; font-size: 11px; color: var(--muted); }
+  #res-next .bar { display: block; width: 180px; height: 7px; border: var(--line); margin-top: 4px; background: #fff; }
+  #res-next .bar i { display: block; height: 100%; background: #111; }
+  #res-next .star { font-size: 12px; color: var(--muted); }
+  #res-next .upnext { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
+  body.style-neo #res-next .unlock { background: var(--accent); box-shadow: 4px 4px 0 #000; font-family: var(--sans); }
+  body.style-neo #res-next .bar i { background: #ff2bd6; }
+  body.style-neo #res-next { font-family: var(--sans); font-weight: 700; }
+  #clicklock { align-items: center; justify-content: center; cursor: pointer; background: rgba(255,255,255,.18); }
+  #clicklock .pill { padding: 12px 26px; background: #fff; border: var(--line-strong); border-radius: 999px; font: 800 16px var(--sans); letter-spacing: .08em; text-transform: uppercase; box-shadow: var(--shadow); animation: fadein .2s ease-out both, tutpulse .8s ease-in-out .3s infinite alternate; }
+  body.style-neo #clicklock .pill { background: var(--accent); box-shadow: 5px 5px 0 #000; }
   #boot { position: fixed; inset: 0; display: flex; flex-direction: column; gap: 14px; align-items: center; justify-content: center; background: #fff; font-size: 12px; letter-spacing: .3em; text-transform: uppercase; text-align: center; padding: 20px; }
   #boot .msg { max-width: 520px; letter-spacing: .05em; text-transform: none; line-height: 1.5; color: #7a0c0c; }
   #styletoast { position: fixed; left: 50%; top: 14%; transform: translateX(-50%); padding: 6px 14px; background: #fff; border: 1px solid #111; font-size: 12px; letter-spacing: .2em; text-transform: uppercase; opacity: 0; transition: opacity .3s; pointer-events: none; }
@@ -358,10 +401,8 @@
   body.touch #bossbar, body.touch #area, body.touch #perf { top: calc(70px + env(safe-area-inset-top)); }
   body.touch #prompt { pointer-events: auto; top: 58%; font-size: 14px; padding: 8px 16px 8px 8px; touch-action: none; }
   body.touch #prompt.down { transform: translateX(-50%) scale(.95); }
-  body.touch #overlay { bottom: auto; top: 30%; padding: 8px 12px; font-size: 11px; max-width: 70vw; }
-  body.touch #overlay .grid { gap: 3px 12px; }
-  body.touch #overlay .grid div { white-space: normal; }
-  body.touch #tip { bottom: auto; top: 22%; max-width: 60vw; }
+  body.touch #tip { bottom: auto; top: 22%; max-width: 64vw; white-space: normal; }
+  body.touch #tut-text { top: 24%; max-width: 70vw; white-space: normal; text-align: center; }
   body.touch #toast { bottom: auto; top: 38%; }
   body.touch #fps { right: auto; left: 12px; bottom: 4px; }
   /* portrait on a phone: ask to turn it */
@@ -409,18 +450,16 @@
     .card .title svg.hw { height: 38px; width: auto; }
     .card .title { margin: 0 0 6px; }
     .card .lname { font-size: 18px; }
-    .card .place { margin-bottom: 8px; }
-    .card .goal { font-size: 12px; margin-bottom: 6px; }
-    .card .reminder { margin: 6px 0 8px; }
-    .progress { margin: 6px auto 10px; }
+          .progress { margin: 6px auto 10px; }
     .bigstars { font-size: 24px; margin-bottom: 4px; }
     .badge { margin-bottom: 4px; }
     .stats { gap: 2px 20px; font-size: 12px; margin-bottom: 8px; }
     .btn-try { padding: 9px 20px; }
     .btn-ghost { padding: 7px 12px; }
     #results .card { display: grid; grid-template-columns: auto auto; column-gap: 28px; align-items: center; }
-    #results .card > .title, #results .card > .kicker, #results .card > .bigstars, #results .card > #res-badges { grid-column: 1; }
-    #results .card > .stats { grid-column: 2; grid-row: 1 / span 4; }
+    #results .card > .title, #results .card > .kicker, #results .card > .bigstars, #results .card > #res-badges, #results .card > #res-next { grid-column: 1; }
+    #results .card > .stats { grid-column: 2; grid-row: 1 / span 5; }
+    #res-next { margin-bottom: 4px; gap: 3px; }
     #results .card > .campaign, #results .card > #res-btns { grid-column: 1 / span 2; }
   }
   @media (max-width: 760px) and (orientation: landscape) {
@@ -453,6 +492,7 @@
   <button class="tbtn t-pause" data-tb="pause" aria-label="pause"><svg viewBox="0 0 40 40"><path d="M15 11v18M25 11v18"/></svg></button>
 </div>
 <div id="hud" class="hidden">
+  <div id="slowmo"></div>
   <div id="vignette"></div>
   <div id="healflash"></div>
   <div id="edge-top" class="edge"></div>
@@ -463,14 +503,11 @@
   <div id="crosshair"></div>
   <div id="hitmarker"></div>
   <div id="prompt" class="hidden"></div>
-  <div id="hitdir"><div class="rule"></div><span></span></div>
-  <div id="area"><div class="rule"></div><span></span></div>
   <div id="objective"><div class="h"></div><div class="txt"></div><div class="timer hidden"></div></div>
   <div id="scorebox"><div class="sc">0</div><div class="combo"></div><div class="feed"></div></div>
   <div id="bossbar" class="hidden"><span></span><div class="bar"><i></i></div></div>
   <div id="cpnote" class="hidden"></div>
   <div id="tip"></div>
-  <div id="overlay" class="hidden"></div>
   <div id="perf" class="hidden"></div>
   <div id="status">
     <div id="health"><div class="lbl"><span class="h"></span><span class="num">100 / 100</span></div><div id="hpbar"><div id="hptrail"></div><div id="hpfill"></div><div class="cap"></div></div></div>
@@ -478,6 +515,8 @@
   </div>
   <div id="fps" class="hidden"></div>
   <div id="toast"></div>
+  <div id="tut-arrow" class="hidden"><svg viewBox="0 0 54 70"><path d="M15 3h24v33h13L27 67 2 36h13z"/></svg></div>
+  <div id="tut-text" class="hidden"></div>
 </div>
 <div id="fade"></div>
 
@@ -489,6 +528,7 @@
       <button data-sec="levels" data-t="menu.levels"></button>
       <button data-sec="endless" data-t="menu.endless"></button>
       <button data-sec="style" data-t="menu.style"></button>
+      <button data-sec="armory" data-t="menu.armory"></button>
       <button data-sec="controls" data-t="menu.controls"></button>
       <button data-sec="settings" data-t="menu.settings"></button>
       <button data-sec="howto" data-t="menu.howto"></button>
@@ -506,6 +546,7 @@
       <button data-go="resume" class="primary" data-t="menu.resume"></button>
       <button data-sec="mission" data-t="menu.mission"></button>
       <button data-sec="style" data-t="menu.style"></button>
+      <button data-sec="armory" data-t="menu.armory"></button>
       <button data-sec="settings" data-t="menu.settings"></button>
       <button data-sec="controls" data-t="menu.controls"></button>
       <button data-go="checkpoint" data-t="menu.restartCheckpoint"></button>
@@ -520,9 +561,6 @@
   <div class="card">
     <div class="kicker" id="lc-kicker"></div>
     <div class="lname" id="lc-name"></div>
-    <div class="place" id="lc-place"></div>
-    <div class="goal" id="lc-goal"></div>
-    <div class="reminder" id="lc-rem"></div>
     <div class="progress"><i id="lc-bar"></i></div>
     <button class="btn-try" id="lc-start" disabled></button>
   </div>
@@ -542,13 +580,14 @@
     <div class="kicker" id="res-level"></div>
     <div class="bigstars" id="res-stars"></div>
     <div id="res-badges"></div>
+    <div id="res-next"></div>
     <dl class="stats" id="res-stats"></dl>
     <div class="campaign" id="res-campaign"></div>
     <div id="res-btns"></div>
   </div>
 </div>
 
-<div id="clicklock" class="screen hidden"><div class="card"><strong data-t="clicklock.title"></strong><p data-t="clicklock.body"></p></div></div>
+<div id="clicklock" class="screen hidden"><div class="pill" id="clicklock-t"></div></div>
 <div id="styletoast"></div>
 <div id="rotate"><div class="card"><svg viewBox="0 0 64 64" class="ph"><rect x="20" y="8" width="24" height="44" rx="4"/><path d="M50 40a18 18 0 0 1-18 18M28 58h4v-4"/></svg><strong data-t="rotate.title"></strong><p data-t="rotate.body"></p></div></div>
 

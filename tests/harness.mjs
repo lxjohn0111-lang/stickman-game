@@ -10,7 +10,10 @@ export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '
 // A phone in landscape: touch screen, coarse pointer, mobile viewport.
 export const PHONE = { width: 844, height: 390, mobile: true };
 
-export async function launch({ width = 1280, height = 720, query = 'nolock', profile = null, mobile = false, page: html = 'index.html', init = null } = {}) {
+// The game opens straight into play; the suites written around the menu ask
+// for it with ?menu. autostart: true boots the way a player does instead and
+// waits until the level is live.
+export async function launch({ width = 1280, height = 720, query = 'nolock', profile = null, mobile = false, page: html = 'index.html', init = null, autostart = false } = {}) {
   const args = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--autoplay-policy=no-user-gesture-required'];
   const ctx = { viewport: { width, height } };
   if (mobile) Object.assign(ctx, { isMobile: true, hasTouch: true, deviceScaleFactor: 2, userAgent: 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36' });
@@ -27,8 +30,10 @@ export async function launch({ width = 1280, height = 720, query = 'nolock', pro
   const logs = [];
   page.on('console', (m) => { logs.push(`${m.type()}: ${m.text()}`); if (m.type() === 'error') console.log('console.error:', m.text()); });
   page.on('pageerror', (e) => { logs.push('pageerror: ' + e.message); console.log('pageerror:', e.message); });
-  await page.goto(`file://${encodeURI(`${root}/${html}`)}?${query}`);
-  await page.waitForFunction(() => window.WT && window.WT.game && window.WT.game.state === 'menu', null, { timeout: 120000 });
+  const q = autostart ? query : [query, 'menu'].filter(Boolean).join('&');
+  await page.goto(`file://${encodeURI(`${root}/${html}`)}?${q}`);
+  if (autostart) await page.waitForFunction(() => window.WT && window.WT.game && ['playing', 'lockwait'].includes(window.WT.game.state), null, { timeout: 180000 });
+  else await page.waitForFunction(() => window.WT && window.WT.game && window.WT.game.state === 'menu', null, { timeout: 120000 });
   return { browser, page, logs };
 }
 
