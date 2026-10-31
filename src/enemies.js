@@ -702,8 +702,10 @@ export class Enemies {
     // knocks them back and hurts; stepping aside makes him overshoot.
     if (R.charge) {
       e.chargeCd = Math.max(0, e.chargeCd - dt);
+      const chargeSp = R.run * 2.3 * (g.diff.move || 1);
       if (e.chargeT <= 0 && e.chargeCd <= 0 && e.sees && distP > 4 && distP < 16 && e.stagger <= 0) {
-        e.chargeT = 1.35;
+        // long enough to reach where the player stood, and a little beyond
+        e.chargeT = Math.min(2.4, distP / chargeSp + 0.35);
         e.chargeCd = rand(6, 8.5);
         e.chargeHit = false;
         e.burstLeft = 0;
@@ -712,8 +714,7 @@ export class Enemies {
       }
       if (e.chargeT > 0) {
         e.chargeT -= dt;
-        const sp = R.run * 1.9 * (g.diff.move || 1);
-        vx = e.chargeDir[0] * sp; vz = e.chargeDir[1] * sp;
+        vx = e.chargeDir[0] * chargeSp; vz = e.chargeDir[1] * chargeSp;
         if (!e.chargeHit && distP < e.body.r + 0.75 && Math.abs(e.body.y - P.y) < 1.2) {
           e.chargeHit = true;
           e.chargeT = Math.min(e.chargeT, 0.15);

@@ -12,6 +12,8 @@ await page.evaluate(() => { WT.game.manual = true; WT.game.startLevel(2); });
 await page.waitForFunction(() => WT.game.state === 'ready', null, { timeout: 300000 });
 await page.evaluate(() => {
   const g = WT.game;
+  // Normal: the numbers below are the roles' own, not Super Easy's halved ones
+  g.settings.difficulty = 'normal'; g.applySettings(false);
   g.beginLevel(); if (g.state === 'lockwait') g._enterPlaying();
   window.H = {
     run(n) { for (let i = 0; i < n; i++) g.step(1 / 60); },
